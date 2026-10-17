@@ -1,0 +1,86 @@
+Bu projeyi net, somut ve uygulanabilir bir iş planı haline getirelim:
+
+---
+
+### 1. Sorun Nedir?
+
+Körfez Bölgesi'nde (BAE, Suudi Arabistan, Katar vb.) lojistik, hava kargo, turizm acenteleri ve expat transferi yapan şirketler için **bölgesel hava sahası kapanmaları, grevler, hava muhalefeti ve ani uçuş iptalleri** çok ciddi operasyonel krizler yaratır.
+
+* Şirketler bir aksaklık olduğunda bunu resmi havayolu sitelerinden veya haberlerden **saatler sonra** öğrenir.
+* Kargo transferleri gecikir, müşterilere karşı cezai şartlar oluşur ve operasyon ekipleri panik halinde alternatif rota aramaya başlar.
+* İlgili ekipler gün boyu havalimanı panolarını manuel yenileyerek vakit kaybeder.
+
+---
+
+### 2. Çözümümüz Ne?
+
+**Gulf Disruption Radar (Körfez Aksaklık & Risk Radarı):**
+Körfez'in kilit havalimanlarını (Dubai DXB, Abu Dabi AUH, Riyad RUH, Cidde JED vb.) 7/24 arka planda otomatik tarayan, iptal ve gecikmelerde bir anormallik (örneğin uçuşların %20'sinden fazlasında gecikme/iptal) tespit ettiğinde bunu anında anlamlandıran ve şirketlerin **Telegram, WhatsApp veya Slack** operasyon kanallarına doğrudan uyarı (alert) geçen mikro bir servis.
+
+* **Örnek Uyarı:**
+*🚨 ALERT: RUH (Riyad) - DXB (Dubai) hattında son 2 saatte 14 uçuş iptal edildi / %35 aksama var. Kargo ve yolcu transferlerinde 6+ saat gecikme öngörülüyor.*
+
+---
+
+### 3. Nasıl Gelir Elde Edeceğiz?
+
+Model: **B2B SaaS (Aylık / Yıllık Düzenli Abonelik)**
+
+* **Starter ($29 / ay):** 2 havalimanı takibi, günde maksimum 5 anlık uyarı, 1 Telegram/Slack kanalına bildirim.
+* **Pro / Operations ($79 / ay):** Tüm GCC (Körfez) havalimanları, sınırsız anlık uyarı, WhatsApp/Telegram/Slack entegrasyonu, sabah & akşam yapay zeka operasyon özeti bülteni.
+* **Enterprise ($199 / ay):** Özel rota izleme, şirket içi ERP/lojistik sistemine doğrudan Webhook/API entegrasyonu.
+
+> **Gelir Hesabı:** Sadece 25 adet B2B lojistik/acente abonesi ($79/ay) aylık yaklaşık **~$2.000 (düzenli pasif gelir)** üretir.
+
+---
+
+### 4. Hangi Araçları Kullanacağız & Platform Maliyetleri Nedir?
+
+Ürünün altyapısını minimum maliyet ve maksimum verimle kuracak mimari:
+
+| Bileşen | Kullanılacak Araç / Platform | Görevi | Aylık Maliyet |
+| --- | --- | --- | --- |
+| **Geliştirme** | VS Code + AI Eklentisi (Cursor / Roo Code / Claude) | Kodlama, API bağlama ve otomasyon | **$0 - $20** (Mevcut AI aboneliğin varsa $0) |
+| **Ön Yüz (Web)** | Next.js / Tailwind CSS + Vercel Hosting | Landing page ve kullanıcı ayar paneli | **$0** (Vercel Free Tier fazlasıyla yeterli) |
+| **Veritabanı & Auth** | Supabase (PostgreSQL) | Kullanıcı kayıtları, alert tercihleri | **$0** (Ücretsiz plan yeterli) |
+| **Veri Kaynağı / API** | AviationStack / Flightradar24 API veya doğrudan Havalimanı FIDS Kazıma (Scraping) | Uçuş durum verilerini çekmek | **$0 - $50** (Başlangıçta ücretsiz katman / scraper ile $0) |
+| **Arka Plan Motoru** | Render.com veya Hetzner VPS (Docker) | Python botunu 7/24 çalıştırma | **$5 - $7** / ay |
+| **Yapay Zeka (Analiz)** | Gemini API veya OpenAI API (gpt-4o-mini) | Ham log verisini okunabilir bültene çevirme | **~$2 - $5** / ay (Çok ucuz) |
+| **Bildirim Kanalları** | Telegram Bot API / Slack Webhook | Anlık uyarı gönderme | **$0** (Tamamen ücretsiz) |
+| **Ödeme Altyapısı** | Lemon Squeezy veya Stripe | Global kartlardan aylık abonelik tahsilatı | Sabit ücret yok (%5 komisyon) |
+| **Domain** | Namecheap / Cloudflare (.com veya .co) | Alan adı tescili | **~$10 / yıl** |
+
+* **Toplam Başlangıç Aylık Sabit Maliyeti:** **~$10 - $25 / ay** (Neredeyse sıfır sermaye).
+
+---
+
+### 5. Pazarlama Stratejimiz Ne? Maliyetimiz Nedir?
+
+Genel kitleye Instagram/Facebook reklamı vermek B2B'de para yakmaktır. Doğrudan ve nokta atışı şu 3 kanaldan gidilir:
+
+#### A. Soğuk Erişim (Cold Outreach) — *0 TL Maliyet*
+
+* **Kanal:** LinkedIn ve kurumsal e-posta.
+* **Hedef Kitle:** Dubai, Abu Dabi, Riyad merkezli "Freight Forwarder", "Cargo Operations Manager", "Luxury Travel Concierge" unvanlı kişiler.
+* **Taktik:** Ürün satmaya çalışma. Aksaklık olduğu gün şunu yaz:
+> *"Merhaba [İsim], sistemimiz DXB kargo terminalinde son 2 saatte %25'lik bir operasyonel gecikme saptadı. Ekiplerinizin bilgisi olsun istedik. GCC bölgesindeki bu anlık uyarıları ekibinizin Telegram veya Slack kanalına 14 gün boyunca ücretsiz tanımlayabilirim, denemek ister misiniz?"*
+
+
+* **Dönüşüm:** 100 kişiden 10-15'i denemeyi kabul eder; 3-5 tanesi kalıcı aboneye döner.
+
+#### B. Canlı Durum Sayfası (Programmatic SEO) — *0 TL Maliyet*
+
+* Web sayfasında `/status/dxb-airport`, `/status/ruh-riyadh` gibi her havalimanı için canlı gecikme oranını gösteren hafif sayfalar açılır.
+* Yüklediğin CSV'deki gibi *"emirates flight cancellations"*, *"uae airline delays"* aramaları yapanlar doğrudan bu sayfalara organik olarak düşer.
+* Sayfanın tepesinde: *"Krizleri sonradan öğrenmeyin, ekibinizin Slack/Telegram kanalına anlık bildirim kurun"* butonu yer alır.
+
+#### C. Lojistik ve Taşımacılık Grupları — *0 TL Maliyet*
+
+* BAE & Körfez bölgesi expat, tedarik zinciri ve lojistik profesyonellerinin bulunduğu LinkedIn/WhatsApp gruplarında haftalık "Körfez Hava Sahası Aksaklık Bülteni"ni ücretsiz paylaşarak otorite kurmak.
+* **Toplam Pazarlama Bütçesi:** **0 TL (Yalnızca günde 30-45 dakikalık hedefli mesajlaşma eforu).**
+
+---
+
+### Özetle
+
+Bu yapı; tek seferde kurulan, aylık 20 dolar maliyeti olan, müşterilerin iptal etmediği ve döviz (USD) cinsinden düzenli nakit akışı üreten, yapay zekanın sağladığı geliştirme hızıyla 1-2 haftada canlıya alınabilecek gerçekçi bir B2B mikro-SaaS modelidir.

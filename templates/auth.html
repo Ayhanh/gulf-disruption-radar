@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication - Gulf Disruption Radar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+
+    <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+        <a href="/" class="inline-flex items-center gap-2 mb-2">
+            <span class="text-3xl">📡</span>
+            <span class="text-2xl font-bold tracking-tight text-slate-900">Gulf Disruption Radar</span>
+        </a>
+        <h2 class="text-sm font-medium text-slate-500">Access GCC Air Corridor & Cargo Disruption Intelligence</h2>
+    </div>
+
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
+        <div class="bg-white py-8 px-6 shadow-sm border border-slate-200 rounded-2xl sm:px-10">
+            
+            {% if error %}
+            <div class="mb-5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <!-- Sekmeler -->
+            <div class="flex border-b border-slate-200 mb-6">
+                <button type="button" onclick="showTab('register')" id="tabRegister" class="flex-1 pb-3 text-sm transition {{ 'border-b-2 border-slate-900 text-slate-900 font-semibold' if initial_tab == 'register' else 'border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700' }}">
+                    Create Free Account
+                </button>
+                <button type="button" onclick="showTab('login')" id="tabLogin" class="flex-1 pb-3 text-sm transition {{ 'border-b-2 border-slate-900 text-slate-900 font-semibold' if initial_tab != 'register' else 'border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700' }}">
+                    Sign In
+                </button>
+            </div>
+
+            <!-- REGISTRATION FORM -->
+            <form id="formRegister" action="/auth/register" method="POST" class="space-y-4 {{ '' if initial_tab == 'register' else 'hidden' }}">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Corporate or Business Email</label>
+                    <input type="email" name="email" required placeholder="ops@logistics.com" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Password</label>
+                    <input type="password" name="password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Telegram Chat ID (Optional for Live Push Alerts)</label>
+                    <input type="text" name="telegram_chat_id" placeholder="e.g. 123456789" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                    
+                    <div class="mt-3 p-3.5 bg-sky-50/70 border border-sky-200 rounded-xl text-xs text-sky-950 space-y-2">
+                        <div class="flex items-center gap-1.5 font-bold text-sky-900">
+                            <span>⚡</span>
+                            <span>How to Get Your Chat ID & Receive Push Alerts:</span>
+                        </div>
+                        <ol class="list-decimal list-inside space-y-1 text-slate-700 leading-relaxed">
+                            <li>Open Telegram and start <a href="https://t.me/userinfobot" target="_blank" class="font-bold text-sky-700 underline">@userinfobot</a>.</li>
+                            <li>Copy the numeric <b>Id</b> and paste it in the box above.</li>
+                            <li><b class="text-rose-600">Crucial:</b> Start our radar bot and tap <b>Start</b>.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-sm text-sm transition">
+                        Get Started Free (3 Searches & 3 Watchlists) →
+                    </button>
+                </div>
+            </form>
+
+            <!-- LOGIN FORM -->
+            <form id="formLogin" action="/auth/login" method="POST" class="space-y-4 {{ '' if initial_tab != 'register' else 'hidden' }}">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Email Address</label>
+                    <input type="email" name="email" required placeholder="ops@logistics.com" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Password</label>
+                    <input type="password" name="password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-sm text-sm transition">
+                        Sign In to Radar →
+                    </button>
+                </div>
+            </form>
+
+        </div>
+
+        <div class="mt-6 text-center">
+            <a href="/" class="text-xs text-slate-500 hover:text-slate-800 font-medium">← Back to Overview</a>
+        </div>
+    </div>
+
+    <script>
+        function showTab(type) {
+            const formReg = document.getElementById('formRegister');
+            const formLog = document.getElementById('formLogin');
+            const tabReg = document.getElementById('tabRegister');
+            const tabLog = document.getElementById('tabLogin');
+
+            if (type === 'register') {
+                formReg.classList.remove('hidden');
+                formLog.classList.add('hidden');
+                tabReg.className = "flex-1 pb-3 text-sm transition border-b-2 border-slate-900 text-slate-900 font-semibold";
+                tabLog.className = "flex-1 pb-3 text-sm transition border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700";
+            } else {
+                formLog.classList.remove('hidden');
+                formReg.classList.add('hidden');
+                tabLog.className = "flex-1 pb-3 text-sm transition border-b-2 border-slate-900 text-slate-900 font-semibold";
+                tabReg.className = "flex-1 pb-3 text-sm transition border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700";
+            }
+        }
+    </script>
+</body>
+</html>

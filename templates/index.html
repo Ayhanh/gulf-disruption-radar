@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gulf Disruption Radar - Real-Time GCC Air Cargo & Corridor Intelligence</title>
+
+    <!-- FAVICON -->
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+
+    <!-- PWA & MOBILE CONFIGURATION -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- APPLE / IOS META TAGS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GulfRadar">
+    <link rel="apple-touch-icon" href="/static/favicon.svg">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased">
+
+    <!-- NAVBAR -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                    📡
+                </div>
+                <div>
+                    <span class="font-bold text-base text-slate-900 block leading-tight">Gulf Disruption Radar</span>
+                    <span class="text-[11px] text-slate-500 font-medium">GCC Cargo & Passenger Corridor Intelligence</span>
+                </div>
+            </a>
+
+            <div class="flex items-center gap-3">
+                <a href="/sync" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition">
+                    Sync Live DXB
+                </a>
+
+                {% if user %}
+                    <div class="hidden sm:flex items-center gap-2 mr-2">
+                        {% if is_pro %}
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                ⭐ PRO PLAN
+                            </span>
+                        {% else %}
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                FREE TIER
+                            </span>
+                        {% endif %}
+                        <span class="text-xs text-slate-500 font-medium">{{ user.email }}</span>
+                    </div>
+
+                    <a href="/auth/logout" class="text-xs font-semibold text-slate-600 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition">
+                        Sign Out
+                    </a>
+                {% else %}
+                    <a href="/auth?mode=login" class="text-xs font-semibold text-slate-700 hover:text-slate-900 px-3 py-2">
+                        Sign In
+                    </a>
+                    <a href="/auth?mode=register" class="text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl shadow-sm transition">
+                        Create Free Account
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
+
+        <!-- HERO -->
+        <section class="text-center max-w-3xl mx-auto pt-4 pb-2 space-y-3">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold tracking-wide">
+                <span>⚡</span> Live Monitoring: Dubai (DXB) Hub Airspace
+            </div>
+            <h1 class="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                Operate with Certainty. <br class="hidden sm:inline"> Protect Your Supply Chain.
+            </h1>
+            <p class="text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl mx-auto">
+                Continuous live tracking of GCC air corridors, delays, and airspace cancellations. Receive instant operational warnings before cargo penalties hit.
+            </p>
+        </section>
+
+        <!-- KOTA & PAYWALL KARTLARI -->
+        {% if search_limit_reached %}
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h4 class="font-bold text-sm text-amber-900">Daily Corridor Lookup Limit Reached ({{ search_count }}/{{ search_limit }})</h4>
+                <p class="text-xs text-amber-800 mt-1">Upgrade to Pro for unlimited on-demand corridor lookups and continuous 24/7 background sync.</p>
+            </div>
+            <a href="#pricing" class="inline-flex justify-center items-center whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
+                Unlock Unlimited Searches →
+            </a>
+        </div>
+        {% endif %}
+
+        {% if watchlist_limit_reached %}
+        <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 sm:p-5 text-indigo-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h4 class="font-bold text-sm text-indigo-900">Complimentary Tracking Limit Reached (3 Items Max)</h4>
+                <p class="text-xs text-indigo-800 mt-1">Free tier monitors up to 3 routes or flights. Upgrade to Pro for unlimited portfolio tracking.</p>
+            </div>
+            <a href="#pricing" class="inline-flex justify-center items-center whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
+                Upgrade to Pro (Unlimited) →
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- ARAMA FORMU -->
+        <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <h2 class="text-xs font-bold tracking-wider uppercase text-slate-500">LOOK UP AIR ROUTE OR FLIGHT</h2>
+                <div class="flex items-center gap-2">
+                    <a href="/export-csv" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                        <span>📥</span> Export CSV
+                    </a>
+                    <span class="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold {{ 'bg-amber-100 text-amber-800' if search_limit_reached else 'bg-slate-100 text-slate-700' }}">
+                        Daily Free Queries: {{ remaining_searches }}
+                    </span>
+                </div>
+            </div>
+
+            <form action="/" method="GET" class="flex flex-col sm:flex-row gap-3">
+                <input 
+                    type="text" 
+                    name="q" 
+                    value="{{ query or '' }}" 
+                    placeholder="Search by destination city, IATA code, or flight number (e.g. Riyadh, RUH, flydubai)..." 
+                    class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition"
+                >
+                <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                    <span>🔍</span> Check Corridor
+                </button>
+            </form>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span class="font-medium text-slate-400">Quick checks:</span>
+                <a href="/?q=RUH" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">DXB ➔ RUH (Riyadh)</a>
+                <a href="/?q=DMM" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">DXB ➔ DMM (Dammam)</a>
+                <a href="/?q=JED" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">DXB ➔ JED (Jeddah)</a>
+            </div>
+        </section>
+
+        <!-- 3'LÜ METRİK KARTLARI -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 flex items-center justify-between shadow-sm">
+                <div>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Flights Monitored</p>
+                    <p class="text-3xl font-extrabold text-slate-900 mt-1">{{ data.total }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 text-xl font-bold">✈️</div>
+            </div>
+            <div class="bg-white rounded-2xl border border-rose-200 p-5 flex items-center justify-between shadow-sm bg-rose-50/20">
+                <div>
+                    <p class="text-xs font-semibold text-rose-600 uppercase tracking-wider">Live Cancellations</p>
+                    <p class="text-3xl font-extrabold text-rose-600 mt-1">{{ data.canceled }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 text-xl font-bold">🚫</div>
+            </div>
+            <div class="bg-white rounded-2xl border border-amber-200 p-5 flex items-center justify-between shadow-sm bg-amber-50/20">
+                <div>
+                    <p class="text-xs font-semibold text-amber-600 uppercase tracking-wider">Corridor Delays</p>
+                    <p class="text-3xl font-extrabold text-amber-600 mt-1">{{ data.delayed }}</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 text-xl font-bold">⏱️</div>
+            </div>
+        </div>
+
+        <!-- 1. TABLO: KRİTİK KORİDORLAR -->
+        <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-bold tracking-wider uppercase text-slate-500">CRITICAL CORRIDOR DISRUPTION STREAM</h3>
+                    <span class="text-xs text-slate-400">Routes experiencing severe air cancellations</span>
+                </div>
+                <span class="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                    {{ data.critical_routes|length }} Affected Hubs
+                </span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[11px]">
+                            <th class="py-3 font-semibold">Status</th>
+                            <th class="py-3 font-semibold">Corridor / Hub</th>
+                            <th class="py-3 font-semibold">IATA</th>
+                            <th class="py-3 font-semibold">Disruption Impact</th>
+                            <th class="py-3 font-semibold text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for r in data.critical_routes %}
+                        <tr>
+                            <td class="py-3.5">
+                                <span class="px-2 py-0.5 rounded text-[11px] font-bold {{ 'bg-rose-50 text-rose-600 border border-rose-200' if r.risk_level == 'CRITICAL' else 'bg-amber-50 text-amber-700 border border-amber-200' }}">
+                                    {{ r.risk_level }}
+                                </span>
+                            </td>
+                            <td class="py-3.5 font-bold text-slate-900">DXB ➔ {{ r.name }}</td>
+                            <td class="py-3.5 font-mono text-slate-500">{{ r.iata }}</td>
+                            <td class="py-3.5 text-slate-600">
+                                <span class="font-bold text-rose-600">{{ r.canceled }} cancelled</span> out of {{ r.total }} tracked
+                            </td>
+                            <td class="py-3.5 text-right">
+                                {% if user %}
+                                <form action="/track" method="POST" class="inline">
+                                    <input type="hidden" name="route_code" value="{{ r.iata }}">
+                                    <input type="hidden" name="destination_name" value="{{ r.name }}">
+                                    <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-1.5 px-3 rounded-lg transition">
+                                        + Track Route
+                                    </button>
+                                </form>
+                                {% else %}
+                                <a href="/auth" class="text-xs text-sky-600 hover:underline font-semibold">Sign In to Track</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- KULLANICININ MONİTÖR ETTİĞİ PORTFÖY -->
+        {% if user %}
+        <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-bold tracking-wider uppercase text-slate-500">MONITORED PORTFOLIO</h3>
+                    <span class="text-xs text-slate-400">24/7 background Telegram disruption alerts</span>
+                </div>
+                <span class="text-xs font-semibold text-slate-600">
+                    {{ watchlist|length + tracked_flights|length }} / {{ 'Unlimited' if is_pro else '3 Max' }} Items Tracked
+                </span>
+            </div>
+
+            <!-- 1. Takip Edilen Koridorlar -->
+            <div>
+                <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tracked Routes</h4>
+                {% if watchlist %}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-100 text-slate-400 uppercase text-[10px]">
+                                <th class="py-2">Route</th>
+                                <th class="py-2">Destination</th>
+                                <th class="py-2">Channel</th>
+                                <th class="py-2 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for item in watchlist %}
+                            <tr>
+                                <td class="py-2.5 font-mono font-bold text-slate-900">DXB ➔ {{ item.route_code }}</td>
+                                <td class="py-2.5 text-slate-700">{{ item.destination_name }}</td>
+                                <td class="py-2.5">
+                                    <span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold text-[10px] border border-emerald-200">Telegram Active</span>
+                                </td>
+                                <td class="py-2.5 text-right">
+                                    <form action="/untrack" method="POST" class="inline">
+                                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                                        <button type="submit" class="text-rose-600 hover:text-rose-800 font-semibold text-[11px]">Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-xs text-slate-400 italic">No corridors tracked yet.</p>
+                {% endif %}
+            </div>
+
+            <!-- 2. Takip Edilen Tekil Uçuşlar -->
+            <div>
+                <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Individual Monitored Flights (State-Change Alert)</h4>
+                {% if tracked_flights %}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-100 text-slate-400 uppercase text-[10px]">
+                                <th class="py-2">Flight</th>
+                                <th class="py-2">Airline</th>
+                                <th class="py-2">Destination</th>
+                                <th class="py-2">Latest Status</th>
+                                <th class="py-2 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for f in tracked_flights %}
+                            <tr>
+                                <td class="py-2.5 font-mono font-bold text-slate-900">{{ f.flight_num }}</td>
+                                <td class="py-2.5 text-slate-700">{{ f.airline }}</td>
+                                <td class="py-2.5 text-slate-700">{{ f.destination_name }}</td>
+                                <td class="py-2.5">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ 'bg-rose-50 text-rose-600 border border-rose-200' if f.last_status == 'Canceled' else ('bg-amber-50 text-amber-700 border border-amber-200' if f.last_status == 'Delayed' else 'bg-slate-100 text-slate-700 border border-slate-200') }}">
+                                        {{ f.last_status|upper }}
+                                    </span>
+                                </td>
+                                <td class="py-2.5 text-right">
+                                    <form action="/untrack-flight" method="POST" class="inline">
+                                        <input type="hidden" name="flight_id" value="{{ f.id }}">
+                                        <button type="submit" class="text-rose-600 hover:text-rose-800 font-semibold text-[11px]">Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-xs text-slate-400 italic">No individual flights tracked yet. Click "+ Track" on any flight in the timetable below.</p>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- 2. TABLO: KOMPAKT 8 UÇUŞLUK CANLI UÇUŞ TABLOSU -->
+        <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-bold tracking-wider uppercase text-slate-500">LIVE DEPARTURE TIMETABLE</h3>
+                    <p class="text-xs text-slate-400">Showing top 8 flights · Click any row or 'Inspect' for full telemetry</p>
+                </div>
+                
+                <button type="button" onclick="openAllFlightsModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition shadow-sm">
+                    <span>⚡ View All ({{ data.all_flights|length }} Flights) ↗</span>
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[11px]">
+                            <th class="py-3 font-semibold">Time</th>
+                            <th class="py-3 font-semibold">Flight</th>
+                            <th class="py-3 font-semibold">Airline</th>
+                            <th class="py-3 font-semibold">Destination</th>
+                            <th class="py-3 font-semibold">Gate</th>
+                            <th class="py-3 font-semibold">Status</th>
+                            <th class="py-3 font-semibold text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for fl in data.top_8_flights %}
+                        <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="handleRowClick(event, this)" data-flight='{{ fl|tojson }}'>
+                            <td class="py-3.5 font-mono font-bold text-slate-700">{{ fl.time }}</td>
+                            <td class="py-3.5 font-mono font-semibold text-slate-900">{{ fl.flight_num }}</td>
+                            <td class="py-3.5 text-slate-600">{{ fl.airline }}</td>
+                            <td class="py-3.5 font-medium text-slate-900">{{ fl.dest_name }} ({{ fl.dest_iata }})</td>
+                            <td class="py-3.5 text-slate-500">T{{ fl.terminal }} / G-{{ fl.gate }}</td>
+                            <td class="py-3.5">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ 'bg-rose-50 text-rose-600 border border-rose-200' if fl.status == 'Canceled' else ('bg-amber-50 text-amber-700 border border-amber-200' if fl.status == 'Delayed' else 'bg-emerald-50 text-emerald-700 border border-emerald-200') }}">
+                                    {{ fl.status|upper }}
+                                </span>
+                            </td>
+                            <td class="py-3.5 text-right space-x-2">
+                                {% if user %}
+                                <form action="/track-flight" method="POST" class="inline" onclick="event.stopPropagation();">
+                                    <input type="hidden" name="flight_num" value="{{ fl.flight_num }}">
+                                    <input type="hidden" name="airline" value="{{ fl.airline }}">
+                                    <input type="hidden" name="destination_name" value="{{ fl.dest_name }}">
+                                    <input type="hidden" name="scheduled_time" value="{{ fl.time }}">
+                                    <input type="hidden" name="status" value="{{ fl.status }}">
+                                    <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-[11px] py-1 px-2.5 rounded-lg transition">
+                                        + Track
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <button type="button" onclick="event.stopPropagation(); openFlightModalFromData(this.closest('tr').dataset.flight)" class="text-sky-600 hover:underline font-semibold text-xs">
+                                    Inspect ↗
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pt-2 text-center border-t border-slate-100">
+                <button type="button" onclick="openAllFlightsModal()" class="text-xs text-slate-500 hover:text-slate-800 font-semibold inline-flex items-center gap-1">
+                    Displaying 8 most urgent departures · Click to expand full {{ data.all_flights|length }} active flights list →
+                </button>
+            </div>
+        </section>
+
+        <!-- FİYATLANDIRMA TABLOSU -->
+        {% if not is_pro %}
+        <section id="pricing" class="pt-4">
+            <div class="text-center max-w-xl mx-auto mb-8 space-y-2">
+                <h3 class="text-xs font-bold tracking-wider uppercase text-blue-600">TRANSPARENT PRICING</h3>
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Protect Your GCC Logistics & Avoid Freight Penalties</h2>
+                <p class="text-xs text-slate-500">Cancel or change plans anytime. Powered by Dodo Payments.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-bold text-slate-900">Complimentary Tier</span>
+                            <span class="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Base</span>
+                        </div>
+                        <div class="text-2xl font-extrabold text-slate-900 mb-4">$0 <span class="text-xs font-normal text-slate-500">/ forever</span></div>
+                        <ul class="text-xs text-slate-600 space-y-2.5 mb-6">
+                            <li class="flex items-center gap-2"><span>✓</span> 3 Daily Live Corridor Queries</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Track up to 3 GCC Corridors or Flights</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Real-Time Telegram push alerts</li>
+                            <li class="flex items-center gap-2 text-slate-400"><span>✕</span> Unlimited portfolio tracking</li>
+                        </ul>
+                    </div>
+                    {% if not user %}
+                        <a href="/auth" class="w-full text-center bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2.5 rounded-xl transition">
+                            Get Started Free
+                        </a>
+                    {% else %}
+                        <div class="w-full text-center bg-slate-50 text-slate-400 font-semibold text-xs py-2.5 rounded-xl border border-slate-200">
+                            Current Active Tier
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="bg-white border-2 border-slate-900 rounded-2xl p-6 flex flex-col justify-between shadow-md relative">
+                    <span class="absolute -top-3 right-6 bg-slate-900 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider">
+                        Essential for Air Freight
+                    </span>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-bold text-slate-900">Radar Pro</span>
+                            <span class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Full Coverage</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 mb-4">
+                            <span class="text-2xl font-extrabold text-slate-900">\$29</span>
+                            <span class="text-xs text-slate-500">/ month</span>
+                        </div>
+                        <ul class="text-xs text-slate-700 space-y-2.5 mb-6 font-medium">
+                            <li class="flex items-center gap-2"><span>✓</span> <b>Unlimited</b> live corridor queries & CSV exports</li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>Unlimited</b> tracked routes & individual flights</li>
+                            <li class="flex items-center gap-2"><span>✓</span> 24/7 continuous AeroDataBox engine sync</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Instant state-change Telegram alerts</li>
+                        </ul>
+                    </div>
+
+                    <div class="space-y-2.5 pt-2">
+                        <div class="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-start gap-2">
+                            <svg class="w-4 h-4 text-blue-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span><strong>Important:</strong> Please ensure your checkout email matches your registered account email for instant activation.</span>
+                        </div>
+
+                        <a href="https://test.checkout.dodopayments.com" target="_blank" class="block w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
+                            Upgrade to Radar Pro (\$29/mo) →
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- MOBİL ERİŞİM / PWA KURULUM BÖLÜMÜ -->
+        <section id="pwa-install-card" class="bg-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-800 text-center space-y-4">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 text-2xl border border-sky-400/30">
+                📲
+            </div>
+            <div class="max-w-xl mx-auto space-y-2">
+                <h3 class="text-lg sm:text-xl font-bold tracking-tight text-white">
+                    Track GCC Flights On The Go
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    Add Gulf Disruption Radar to your home screen for quick 1-tap access. Runs full-screen directly in your browser with zero App Store downloads or updates.
+                </p>
+            </div>
+
+            <div>
+                <button id="pwa-install-btn" type="button" class="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold text-xs sm:text-sm py-2.5 px-6 rounded-xl shadow-md transition-all">
+                    <span>⚡</span> <span>Add to Home Screen</span>
+                </button>
+            </div>
+
+            <div id="ios-instruction" class="hidden mt-3 max-w-md mx-auto text-xs text-slate-300 bg-slate-800/80 border border-slate-700 rounded-xl p-3">
+                Tap the <strong class="text-white">Share</strong> button <span class="text-sm">⎋</span> in Safari, then scroll down and tap <strong class="text-white">'Add to Home Screen'</strong> ➕.
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-200 bg-white py-6 mt-12 text-xs text-slate-500">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+                <div>© 2026 Gulf Disruption Radar. Real-time GCC corridor intelligence.</div>
+                <p class="text-[11px] text-slate-400 mt-1">
+                    FIDS telemetry feed powered by AeroDataBox. Independent logistics operational tool.
+                </p>
+            </div>
+            <div class="flex items-center gap-4 flex-shrink-0">
+                <a href="https://t.me/BotFather" target="_blank" class="hover:text-slate-700 transition flex items-center gap-1 font-medium">
+                    <span>🤖</span> Telegram Bot
+                </a>
+                <span class="text-slate-300">•</span>
+                <button type="button" onclick="openSupportModal()" class="hover:text-slate-700 font-semibold text-slate-600 transition flex items-center gap-1">
+                    <span>🛠️</span> Support Desk
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL DOSYASINI DAHİL ET (modals.html) -->
+    {% include "modals.html" %}
+
+    <!-- JAVASCRIPT KONTROLLERİ & PWA SERVICE WORKER -->
+    <script>
+    /* 1. PWA & KURULUM KARTINI OTOMATİK GİZLEME */
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch((err) => {
+                console.log('SW registration note:', err);
+            });
+        });
+    }
+
+    let deferredPrompt;
+    const installBtn = document.getElementById('pwa-install-btn');
+    const iosNotice = document.getElementById('ios-instruction');
+    const pwaCard = document.getElementById('pwa-install-card');
+
+    const isIos = () => /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+    const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    // EĞER ZATEN MASAÜSTÜNE / ANA EKRANA KURULMUŞSA KARTI DİREKT GİZLE
+    if (isStandalone() && pwaCard) {
+        pwaCard.style.display = 'none';
+    }
+
+    // Yükleme başarılı olduğu anda kartı tamamen sayfadan kaldır
+    window.addEventListener('appinstalled', () => {
+        if (pwaCard) {
+            pwaCard.style.display = 'none';
+        }
+    });
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (installBtn) {
+            installBtn.classList.remove('hidden');
+        }
+    });
+
+    if (installBtn) {
+        if (isIos() && !isStandalone()) {
+            installBtn.innerHTML = `<span>📱</span> <span>Add to iPhone Home Screen</span>`;
+        }
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    if (pwaCard) pwaCard.style.display = 'none';
+                }
+                deferredPrompt = null;
+            } else if (isIos()) {
+                if (iosNotice) {
+                    iosNotice.classList.toggle('hidden');
+                }
+            } else {
+                alert("To install Gulf Disruption Radar, open your browser menu (⋮ or Share) and select 'Add to Home screen' or 'Install App'.");
+            }
+        });
+    }
+
+    /* 2. TÜM UÇUŞLAR MODALI KONTROLLERİ */
+    function openAllFlightsModal() {
+        document.getElementById('allFlightsModal').classList.remove('hidden');
+    }
+
+    function closeAllFlightsModal() {
+        document.getElementById('allFlightsModal').classList.add('hidden');
+    }
+
+    function filterModalFlights() {
+        const query = document.getElementById('modalFlightSearch').value.toLowerCase();
+        const rows = document.querySelectorAll('#allFlightsTable .flight-row-item');
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
+    /* 3. UÇUŞ DETAY MODALI (GÜVENLİ PARSE VE AÇMA) */
+    function handleRowClick(event, rowElement) {
+        if (event.target.closest('button') || event.target.closest('form')) {
+            return;
+        }
+        try {
+            const flightData = JSON.parse(rowElement.dataset.flight);
+            openFlightModal(flightData);
+        } catch(err) {
+            console.error("Flight data parse error:", err);
+        }
+    }
+
+    function openFlightModalFromData(flightJsonString) {
+        try {
+            const flight = typeof flightJsonString === 'string' ? JSON.parse(flightJsonString) : flightJsonString;
+            openFlightModal(flight);
+        } catch(e) {
+            console.error("Error opening flight modal:", e);
+        }
+    }
+
+    function openFlightModal(f) {
+        if (!f) return;
+        document.getElementById('m_flight_num').innerText = (f.flight_num || '') + " — " + (f.airline || '');
+        document.getElementById('m_sub_title').innerText = "DXB to " + (f.dest_name || '') + " (" + (f.dest_iata || '') + ")";
+        document.getElementById('m_callsign').innerText = "Callsign: " + (f.call_sign || '-');
+
+        const badge = document.getElementById('m_status_badge');
+        if (f.status === 'Canceled') {
+            badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-rose-500 text-white";
+            badge.innerText = "CANCELED";
+        } else if (f.status === 'Delayed') {
+            badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-500 text-white";
+            badge.innerText = "DELAYED";
+        } else {
+            badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-500 text-white";
+            badge.innerText = (f.status || 'EXPECTED').toUpperCase();
+        }
+
+        document.getElementById('m_sched_local').innerText = f.time || "-";
+        document.getElementById('m_revised').innerText = f.revised_time ? f.revised_time.split("T").pop().substring(0,5) : "-";
+        document.getElementById('m_terminal_gate').innerText = "T" + (f.terminal || '-') + " / G-" + (f.gate || '-');
+        document.getElementById('m_runway').innerText = f.runway || "-";
+
+        document.getElementById('m_dest_name').innerText = f.dest_name || "-";
+        document.getElementById('m_codes').innerText = (f.dest_iata || '-') + " / " + (f.dest_icao || '-');
+        document.getElementById('m_coords').innerText = f.coords || "-";
+
+        document.getElementById('m_ac_model').innerText = f.aircraft_model || "-";
+        document.getElementById('m_ac_reg').innerText = f.aircraft_reg || "-";
+        document.getElementById('m_ac_cargo').innerText = f.is_cargo ? "Dedicated Cargo Aircraft" : "Passenger / Belly Cargo";
+
+        document.getElementById('flightModal').classList.remove('hidden');
+    }
+
+    function closeFlightModal() {
+        document.getElementById('flightModal').classList.add('hidden');
+    }
+
+    /* 4. DESTEK MASASI MODALI */
+    function openSupportModal() {
+        document.getElementById('supportModal').classList.remove('hidden');
+    }
+
+    function closeSupportModal() {
+        document.getElementById('supportModal').classList.add('hidden');
+    }
+
+    async function submitSupportTicket(e) {
+        e.preventDefault();
+        const btn = document.getElementById('supportSubmitBtn');
+        const alertBox = document.getElementById('supportAlert');
+        btn.disabled = true;
+        btn.innerText = 'Sending...';
+
+        try {
+            const res = await fetch('/api/support', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: document.getElementById('supportEmail').value,
+                    message: document.getElementById('supportMessage').value
+                })
+            });
+            if (res.ok) {
+                alertBox.className = "p-3 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 block";
+                alertBox.innerText = 'Ticket received successfully.';
+                setTimeout(() => closeSupportModal(), 2000);
+            }
+        } catch(err) {
+            alertBox.className = "p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200 block";
+            alertBox.innerText = 'Could not send message.';
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Send Ticket';
+        }
+    }
+
+    /* ESC TUŞUYLA KAPATMA */
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeAllFlightsModal();
+            closeFlightModal();
+            closeSupportModal();
+        }
+    });
+    </script>
+</body>
+</html>

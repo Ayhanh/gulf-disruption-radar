@@ -1,0 +1,203 @@
+<!-- ========================================== -->
+<!-- 1. TÜM CANLI UÇUŞLAR TAM LİSTE MODALI      -->
+<!-- ========================================== -->
+<div id="allFlightsModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden my-8 transform transition-all">
+        
+        <!-- Modal Başlık -->
+        <div class="bg-slate-950 text-white p-6 flex justify-between items-center">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h3 class="text-lg font-bold text-white tracking-tight">Full Active Departure Timetable</h3>
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Real-time Dubai International (DXB) flight stream · Next 12 hours telemetry</p>
+            </div>
+            <button type="button" onclick="closeAllFlightsModal()" class="text-slate-400 hover:text-white text-2xl font-bold leading-none p-1 focus:outline-none">&times;</button>
+        </div>
+
+        <!-- Filtreleme & Hızlı Bilgi -->
+        <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="relative w-full sm:w-72">
+                <input type="text" id="modalFlightSearch" onkeyup="filterModalFlights()" placeholder="Filter flights in list..." 
+                       class="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 transition">
+            </div>
+            <span class="text-xs font-semibold text-slate-500">
+                Total Loaded: <strong class="text-slate-900">{{ data.all_flights|length }}</strong> Flights
+            </span>
+        </div>
+
+        <!-- Kaydırılabilir Tablo Listesi -->
+        <div class="p-6 max-h-[60vh] overflow-y-auto text-xs">
+            <table class="w-full text-left border-collapse" id="allFlightsTable">
+                <thead>
+                    <tr class="border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[11px] sticky top-0 bg-white">
+                        <th class="py-2.5 font-semibold">Time</th>
+                        <th class="py-2.5 font-semibold">Flight</th>
+                        <th class="py-2.5 font-semibold">Airline</th>
+                        <th class="py-2.5 font-semibold">Destination</th>
+                        <th class="py-2.5 font-semibold">Gate</th>
+                        <th class="py-2.5 font-semibold">Status</th>
+                        <th class="py-2.5 font-semibold text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for fl in data.all_flights %}
+                    <tr class="hover:bg-slate-50/80 transition flight-row-item">
+                        <td class="py-3 font-mono font-bold text-slate-700">{{ fl.time }}</td>
+                        <td class="py-3 font-mono font-semibold text-slate-900">{{ fl.flight_num }}</td>
+                        <td class="py-3 text-slate-600">{{ fl.airline }}</td>
+                        <td class="py-3 font-medium text-slate-900">{{ fl.dest_name }} ({{ fl.dest_iata }})</td>
+                        <td class="py-3 text-slate-500">T{{ fl.terminal }} / G-{{ fl.gate }}</td>
+                        <td class="py-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ 'bg-rose-50 text-rose-600 border border-rose-200' if fl.status == 'Canceled' else ('bg-amber-50 text-amber-700 border border-amber-200' if fl.status == 'Delayed' else 'bg-emerald-50 text-emerald-700 border border-emerald-200') }}">
+                                {{ fl.status|upper }}
+                            </span>
+                        </td>
+                        <td class="py-3 text-right space-x-2">
+                            {% if user %}
+                            <form action="/track-flight" method="POST" class="inline">
+                                <input type="hidden" name="flight_num" value="{{ fl.flight_num }}">
+                                <input type="hidden" name="airline" value="{{ fl.airline }}">
+                                <input type="hidden" name="destination_name" value="{{ fl.dest_name }}">
+                                <input type="hidden" name="scheduled_time" value="{{ fl.time }}">
+                                <input type="hidden" name="status" value="{{ fl.status }}">
+                                <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-[11px] py-1 px-2.5 rounded-lg transition">
+                                    + Track
+                                </button>
+                            </form>
+                            {% endif %}
+                            <button type="button" onclick='openFlightModal({{ fl|tojson|safe }})' class="text-sky-600 hover:underline font-semibold text-[11px]">
+                                Inspect ↗
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Modal Alt Kısım -->
+        <div class="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+            <span>Dubai International Airport Telemetry Stream</span>
+            <button type="button" onclick="closeAllFlightsModal()" class="px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition">
+                Close Window
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- 2. UÇUŞ TELEMETRİ & DETAY MODALI           -->
+<!-- ========================================== -->
+<div id="flightModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden transform transition-all">
+        
+        <div class="bg-slate-950 p-6 text-white relative">
+            <button type="button" onclick="closeFlightModal()" class="absolute right-5 top-5 text-slate-400 hover:text-white transition text-lg">&times;</button>
+            <div class="flex items-center gap-3">
+                <span id="m_status_badge" class="px-2.5 py-0.5 rounded text-[11px] font-bold tracking-wide uppercase"></span>
+                <span id="m_callsign" class="text-xs font-mono text-slate-400"></span>
+            </div>
+            <h3 id="m_flight_num" class="text-2xl font-extrabold tracking-tight mt-2 text-white"></h3>
+            <p id="m_sub_title" class="text-xs text-slate-400 mt-1 font-medium"></p>
+        </div>
+
+        <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto text-xs">
+            <div>
+                <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">1. Flight Schedule & Terminal Log</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Scheduled Local</span>
+                        <span id="m_sched_local" class="font-bold text-slate-800 text-sm"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Revised Time</span>
+                        <span id="m_revised" class="font-bold text-slate-800 text-sm"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Terminal / Gate</span>
+                        <span id="m_terminal_gate" class="font-bold text-slate-800 text-sm"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px] uppercase font-bold">Runway (Takeoff)</span>
+                        <span id="m_runway" class="font-bold text-slate-800 text-sm"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">2. Destination Intelligence</h4>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500 font-medium">Airport Name:</span>
+                        <span id="m_dest_name" class="font-semibold text-slate-800"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500 font-medium">IATA / ICAO Codes:</span>
+                        <span id="m_codes" class="font-mono font-semibold text-slate-800"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500 font-medium">GPS Coordinates:</span>
+                        <span id="m_coords" class="font-mono text-slate-600"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">3. Aircraft Telemetry</h4>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500 font-medium">Aircraft Model:</span>
+                        <span id="m_ac_model" class="font-semibold text-slate-800"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500 font-medium">Tail Number (Reg):</span>
+                        <span id="m_ac_reg" class="font-mono font-semibold text-slate-800"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500 font-medium">Flight Category:</span>
+                        <span id="m_ac_cargo" class="font-medium text-slate-800"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+            <span>Source: Dubai (DXB) Airport Live Telemetry</span>
+            <button type="button" onclick="closeFlightModal()" class="px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- 3. MODERN DESTEK MASASI MODALI             -->
+<!-- ========================================== -->
+<div id="supportModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 relative">
+        <button type="button" onclick="closeSupportModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+        <div class="flex items-center gap-2 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-bold">🛠️</div>
+            <h3 class="font-bold text-slate-900 text-base">Contact Support Desk</h3>
+        </div>
+        <p class="text-xs text-slate-500 mb-4 leading-relaxed">Need help with corridor alerts, telemetry feeds, or subscription? Reach out below.</p>
+        <form onsubmit="submitSupportTicket(event)" class="space-y-3.5">
+            <div id="supportAlert" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Your Email Address *</label>
+                <input type="email" id="supportEmail" required value="{{ user.email if user else '' }}" placeholder="ops@company.com" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Message Details *</label>
+                <textarea id="supportMessage" rows="4" required placeholder="Describe your question or flight query..." class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition resize-none"></textarea>
+            </div>
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <button type="button" onclick="closeSupportModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">Cancel</button>
+                <button type="submit" id="supportSubmitBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-2 px-5 rounded-xl shadow-sm transition">Send Ticket</button>
+            </div>
+        </form>
+    </div>
+</div>
