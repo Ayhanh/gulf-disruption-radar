@@ -298,6 +298,8 @@ def parse_radar_data(search_query=""):
     route_stats = defaultdict(lambda: {"canceled": 0, "delayed": 0, "total": 0, "name": ""})
     all_flights = []
 
+    now_dt = datetime.now()
+
     for f in departures:
         status = f.get("status", "Expected")
         airline = f.get("airline", {}).get("name", "Bilinmeyen Havayolu")
@@ -315,9 +317,9 @@ def parse_radar_data(search_query=""):
         coords = f"{loc.get('lat', '-')}, {loc.get('lon', '-')}" if loc else "-"
 
         dep_info = f.get("departure", {})
-        sched_time_raw = dep_info.get("scheduledTime", {}).get("local", "-")
-        sched_time_utc = dep_info.get("scheduledTime", {}).get("utc", "-")
-        revised_time = dep_info.get("revisedTime", {}).get("local", "-")
+        sched_time_raw = dep_info.get("scheduledTime", {}).get("local", "")
+        sched_time_utc = dep_info.get("scheduledTime", {}).get("utc", "")
+        revised_time_raw = dep_info.get("revisedTime", {}).get("local", "")
         runway_time = dep_info.get("runwayTime", {}).get("local", "-")
         terminal = dep_info.get("terminal", "-")
         gate = dep_info.get("gate", "-")
@@ -328,12 +330,27 @@ def parse_radar_data(search_query=""):
         ac_reg = ac.get("reg", "-")
         ac_modes = ac.get("modeS", "-")
 
-        sched_display = sched_time_raw.split("T")[-1][:5] if "T" in sched_time_raw else (sched_time_raw[-11:-6] if len(sched_time_raw) >= 11 else sched_time_raw)
+        # Tarih ve Saat Revizyon Mantığı
+        active_time_raw = revised_time_raw if revised_time_raw else sched_time_raw
+        
+        if active_time_raw:
+            try:
+                dt_obj = datetime.fromisoformat(active_time_raw.replace("Z", "+00:00"))
+                if dt_obj.replace(tzinfo=None) < now_dt - timedelta(hours=1) and status != "Canceled":
+                    continue
+                
+                sched_display = dt_obj.strftime("%d %b %H:%M") if revised_time_raw else dt_obj.strftime("%H:%M")
+                if revised_time_raw:
+                    status = f"Rescheduled ({sched_display})"
+            except Exception:
+                sched_display = active_time_raw.split("T")[-1][:5] if "T" in active_time_raw else "Belirsiz"
+        else:
+            sched_display = "Belirsiz"
 
-        if status == "Canceled":
+        if status == "Canceled" or "Canceled" in status:
             canceled_count += 1
             route_stats[dest_iata]["canceled"] += 1
-        elif status == "Delayed":
+        elif "Delayed" in status or status == "Delayed":
             delayed_count += 1
             route_stats[dest_iata]["delayed"] += 1
 
@@ -351,9 +368,9 @@ def parse_radar_data(search_query=""):
             "dest_tz": dest_tz,
             "coords": coords,
             "time": sched_display,
-            "sched_local": sched_time_raw,
+            "sched_local": sched_time_raw if sched_time_raw else "Belirsiz",
             "sched_utc": sched_time_utc,
-            "revised_time": revised_time,
+            "revised_time": revised_time_raw,
             "runway_time": runway_time,
             "terminal": terminal,
             "gate": gate,
@@ -365,9 +382,20 @@ def parse_radar_data(search_query=""):
             "is_cargo": is_cargo
         })
 
+    # Gelişmiş Arama Filtreleme (Havalimanı adı, IATA, İCAO, Uçuş Numarası veya Havayolu)
     if search_query:
-        q = search_query.lower()
-        all_flights = [fl for fl in all_flights if q in fl["dest_name"].lower() or q in fl["dest_iata"].lower() or q in fl["airline"].lower() or q in fl["flight_num"].lower()]
+        q = search_query.lower().strip()
+        all_flights = [
+            fl for fl in all_flights 
+            if q in fl["dest_name"].lower() 
+            or q in fl["dest_iata"].lower() 
+            or q in fl["dest_icao"].lower() 
+            or q in fl["airline"].lower() 
+            or q in fl["flight_num"].lower()
+        ]
+
+    # Kronolojik sıralama (en eskiden yeniye)
+    all_flights = sorted(all_flights, key=lambda x: x.get("time", ""))
 
     critical_routes = []
     for iata, r in route_stats.items():
@@ -383,7 +411,6 @@ def parse_radar_data(search_query=""):
 
     critical_routes = sorted(critical_routes, key=lambda x: x["canceled"], reverse=True)
 
-    # 35 uçuşluk sınır ve ana sayfada kompakt 8 uçuş
     sliced_flights = all_flights[:35]
     top_8_flights = sliced_flights[:8]
 
@@ -409,7 +436,6 @@ async def automated_radar_monitor():
             conn = get_db()
             cursor = conn.cursor()
 
-            # 1. Tekil Uçuş Takibi (State-Change Alert)
             cursor.execute("""
                 SELECT tf.id, tf.user_id, tf.flight_num, tf.airline, tf.destination_name, tf.last_status, u.telegram_chat_id
                 FROM tracked_flights tf
@@ -424,26 +450,23 @@ async def automated_radar_monitor():
 
                 if f_num in current_flight_map:
                     new_status = current_flight_map[f_num]["status"]
-
-                    # Durum değiştiyse ve Canceled veya Delayed olduysa bildir
                     if new_status != old_status:
                         cursor.execute(format_query("UPDATE tracked_flights SET last_status = ? WHERE id = ?"), (new_status, tf["id"]))
                         conn.commit()
 
-                        if new_status in ["Canceled", "Delayed"]:
+                        if "Canceled" in new_status or "Delayed" in new_status or new_status in ["Canceled", "Delayed"]:
                             fl_obj = current_flight_map[f_num]
                             alert_msg = (
                                 "🚨 <b>GULF DISRUPTION RADAR | INDIVIDUAL FLIGHT ALERT</b>\n\n"
                                 f"✈️ <b>Flight:</b> <code>{f_num}</code> ({tf['airline']})\n"
                                 f"📍 <b>Route:</b> DXB ➔ {tf['destination_name']}\n"
-                                f"⚠️ <b>Status Changed:</b> <b>{new_status.upper()}</b> (Prev: {old_status})\n"
-                                f"🕒 <b>Scheduled:</b> {fl_obj['time']} GST\n"
+                                f"⚠️ <b>Status / Revision:</b> <b>{new_status.upper()}</b>\n"
+                                f"🕒 <b>Scheduled/New Time:</b> {fl_obj['time']} GST\n"
                                 f"🚪 <b>Terminal/Gate:</b> T{fl_obj['terminal']} / G-{fl_obj['gate']}\n\n"
                                 f"🔗 <a href='{APP_BASE_URL}'>View Live Radar Dashboard</a>"
                             )
                             await send_telegram(tf["telegram_chat_id"], alert_msg)
 
-            # 2. Koridor Takibi
             cursor.execute("""
                 SELECT w.route_code, w.destination_name, u.telegram_chat_id 
                 FROM watchlist w
@@ -562,7 +585,7 @@ async def export_csv(request: Request):
     )
 
 # ---------------------------------------------------------
-# PWA (PROGRESSIVE WEB APP) ENDPOINT'LERİ (YENİ)
+# PWA (PROGRESSIVE WEB APP) ENDPOINT'LERİ
 # ---------------------------------------------------------
 @app.get("/manifest.json")
 async def get_manifest():
@@ -703,7 +726,7 @@ async def track_individual_flight(
     try:
         cursor.execute(
             format_query("INSERT INTO tracked_flights (user_id, flight_num, airline, destination_name, scheduled_time, last_status) VALUES (?, ?, ?, ?, ?, ?)"),
-            (user["id"], flight_num.strip(), airline.strip(), destination_name.strip(), scheduled_time.strip(), status.strip())
+            (user["id"], flight_num.strip(), airline.strip(), destination_name.strip(), scheduled_time.strip() if scheduled_time else "Belirsiz", status.strip())
         )
         conn.commit()
 
