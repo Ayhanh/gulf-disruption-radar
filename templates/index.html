@@ -87,15 +87,20 @@
             </p>
         </section>
 
+        <!-- AERO DATABOX ZORUNLU ATIF BİLDİRİMİ -->
+        <div class="bg-sky-50 border border-sky-200 rounded-xl p-3 text-center text-xs text-sky-900">
+            Data source: <a href="https://aerodatabox.com" target="_blank" class="font-semibold underline hover:text-sky-700">AeroDataBox</a>. Real-time aviation telemetry feed. (Required for Basic tier compliance).
+        </div>
+
         <!-- KOTA & PAYWALL KARTLARI -->
         {% if search_limit_reached %}
         <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <h4 class="font-bold text-sm text-amber-900">Daily Corridor Lookup Limit Reached ({{ search_count }}/{{ search_limit }})</h4>
-                <p class="text-xs text-amber-800 mt-1">Upgrade to Pro for unlimited on-demand corridor lookups and continuous 24/7 background sync.</p>
+                <p class="text-xs text-amber-800 mt-1">Upgrade to Pro for 50 daily corridor lookups and continuous 24/7 background sync.</p>
             </div>
             <a href="#pricing" class="inline-flex justify-center items-center whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
-                Unlock Unlimited Searches →
+                Unlock Pro Queries →
             </a>
         </div>
         {% endif %}
@@ -103,11 +108,11 @@
         {% if watchlist_limit_reached %}
         <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 sm:p-5 text-indigo-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h4 class="font-bold text-sm text-indigo-900">Complimentary Tracking Limit Reached (3 Items Max)</h4>
-                <p class="text-xs text-indigo-800 mt-1">Free tier monitors up to 3 routes or flights. Upgrade to Pro for unlimited portfolio tracking.</p>
+                <h4 class="font-bold text-sm text-indigo-900">Tracking Limit Reached ({{ max_allowed_watchlist }} Items Max)</h4>
+                <p class="text-xs text-indigo-800 mt-1">Your current plan monitors up to {{ max_allowed_watchlist }} routes or flights.</p>
             </div>
             <a href="#pricing" class="inline-flex justify-center items-center whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
-                Upgrade to Pro (Unlimited) →
+                Upgrade to Pro (20 Items) →
             </a>
         </div>
         {% endif %}
@@ -121,7 +126,7 @@
                         <span>📥</span> Export CSV
                     </a>
                     <span class="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold {{ 'bg-amber-100 text-amber-800' if search_limit_reached else 'bg-slate-100 text-slate-700' }}">
-                        Daily Free Queries: {{ remaining_searches }}
+                        Daily Queries Left: {{ remaining_searches }}
                     </span>
                 </div>
             </div>
@@ -226,6 +231,10 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Atıf Alanı -->
+            <div class="text-[11px] text-slate-400 text-right pt-2 border-t border-slate-100">
+                Data source: <a href="https://aerodatabox.com" target="_blank" class="underline hover:text-slate-600">AeroDataBox</a>
+            </div>
         </section>
 
         <!-- KULLANICININ MONİTÖR ETTİĞİ PORTFÖY -->
@@ -237,7 +246,7 @@
                     <span class="text-xs text-slate-400">24/7 background Telegram disruption alerts</span>
                 </div>
                 <span class="text-xs font-semibold text-slate-600">
-                    {{ watchlist|length + tracked_flights|length }} / {{ 'Unlimited' if is_pro else '3 Max' }} Items Tracked
+                    {{ watchlist|length + tracked_flights|length }} / {{ max_allowed_watchlist }} Max Items
                 </span>
             </div>
 
@@ -385,10 +394,13 @@
                 </table>
             </div>
 
-            <div class="pt-2 text-center border-t border-slate-100">
-                <button type="button" onclick="openAllFlightsModal()" class="text-xs text-slate-500 hover:text-slate-800 font-semibold inline-flex items-center gap-1">
+            <div class="pt-2 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 border-t border-slate-100">
+                <button type="button" onclick="openAllFlightsModal()" class="hover:text-slate-800 font-semibold inline-flex items-center gap-1">
                     Displaying 8 most urgent departures · Click to expand full {{ data.all_flights|length }} active flights list →
                 </button>
+                <div class="text-[11px] text-slate-400">
+                    Data source: <a href="https://aerodatabox.com" target="_blank" class="underline hover:text-slate-600">AeroDataBox</a>
+                </div>
             </div>
         </section>
 
@@ -413,7 +425,7 @@
                             <li class="flex items-center gap-2"><span>✓</span> 3 Daily Live Corridor Queries</li>
                             <li class="flex items-center gap-2"><span>✓</span> Track up to 3 GCC Corridors or Flights</li>
                             <li class="flex items-center gap-2"><span>✓</span> Real-Time Telegram push alerts</li>
-                            <li class="flex items-center gap-2 text-slate-400"><span>✕</span> Unlimited portfolio tracking</li>
+                            <li class="flex items-center gap-2 text-slate-400"><span>✕</span> Higher query limits</li>
                         </ul>
                     </div>
                     {% if not user %}
@@ -441,8 +453,8 @@
                             <span class="text-xs text-slate-500">/ month</span>
                         </div>
                         <ul class="text-xs text-slate-700 space-y-2.5 mb-6 font-medium">
-                            <li class="flex items-center gap-2"><span>✓</span> <b>Unlimited</b> live corridor queries & CSV exports</li>
-                            <li class="flex items-center gap-2"><span>✓</span> <b>Unlimited</b> tracked routes & individual flights</li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>50 Daily</b> live corridor queries & CSV exports</li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>Up to 20</b> tracked routes & individual flights</li>
                             <li class="flex items-center gap-2"><span>✓</span> 24/7 continuous AeroDataBox engine sync</li>
                             <li class="flex items-center gap-2"><span>✓</span> Instant state-change Telegram alerts</li>
                         </ul>
@@ -504,7 +516,7 @@
             <div>
                 <div>© 2026 Gulf Disruption Radar. Real-time GCC corridor intelligence.</div>
                 <p class="text-[11px] text-slate-400 mt-1">
-                    FIDS telemetry feed powered by AeroDataBox. Independent logistics operational tool.
+                    FIDS telemetry feed powered by <a href="https://aerodatabox.com" target="_blank" class="underline hover:text-slate-600">AeroDataBox</a>. Independent logistics operational tool.
                 </p>
             </div>
             <div class="flex items-center gap-4 flex-shrink-0">
@@ -600,7 +612,7 @@
         });
     }
 
-    /* 3. UÇUŞ DETAY MODALI (GÜVENLİ PARSE VE AÇMA) */
+    /* 3. UÇUŞ DETAY MODALI */
     function handleRowClick(event, rowElement) {
         if (event.target.closest('button') || event.target.closest('form')) {
             return;

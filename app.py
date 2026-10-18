@@ -29,7 +29,6 @@ load_dotenv(BASE_DIR / ".env")
 DB_FILE = BASE_DIR / "flights.db"
 DATA_CACHE_FILE = BASE_DIR / "rapidapi_API.txt"
 
-# Çevresel değişkenlerden hassas anahtarları ve dinamik ödeme linklerini çekiyoruz
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "").strip()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
@@ -37,11 +36,15 @@ APP_BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 DEBUG_MODE = os.getenv("DEBUG", "true").strip().lower() in {"1", "true", "yes", "on"}
 DODO_WEBHOOK_SECRET = os.getenv("DODO_WEBHOOK_SECRET", "").strip()
 
-# Render Environment Variables uzerinden dinamik ödeme linkleri
 DODO_MONTHLY_LINK = os.getenv("Radar_Pro_Monthly", "").strip()
 DODO_ANNUAL_LINK = os.getenv("Radar_Pro_Annual", "").strip()
 
 ADMIN_EMAILS = [email.strip().lower() for email in os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").split(",") if email.strip()]
+
+# KOTA VE PLAN LİMİTLERİ
+FREE_SEARCH_LIMIT = 3
+PRO_DAILY_SEARCH_LIMIT = 50
+PRO_MAX_WATCHLIST_LIMIT = 20
 
 app = FastAPI(title="Gulf Disruption Radar")
 
@@ -189,7 +192,7 @@ def verify_password(stored_hash: str, password: str) -> bool:
         return False
 
 # ---------------------------------------------------------
-# TELEGRAM BİLDİRİM MOTORU
+# TELEGRAM BİLDİRİM MOTORU & KOTA BİLDİRİMİ
 # ---------------------------------------------------------
 def _send_telegram_worker(chat_id: str, message: str):
     if not chat_id or not TELEGRAM_BOT_TOKEN:
@@ -203,6 +206,17 @@ def _send_telegram_worker(chat_id: str, message: str):
 
 async def send_telegram(chat_id: str, message: str):
     await asyncio.to_thread(_send_telegram_worker, chat_id, message)
+
+def notify_admin_quota_exceeded(user_email: str, current_searches: int):
+    admin_chat = os.getenv("MY_TELEGRAM_ID", "").strip()
+    if admin_chat:
+        msg = (
+            "🚨 <b>GULF RADAR | QUOTA EXCEEDED ALERT</b>\n\n"
+            f"User <code>{user_email}</code> reached the Pro limit ({current_searches} searches).\n"
+            "System paused automated lookups for this user.\n\n"
+            "💡 <i>Action Required:</i> Create a custom Gold Tier or increase subscription fee."
+        )
+        asyncio.create_task(send_telegram(admin_chat, msg))
 
 # ---------------------------------------------------------
 # KULLANICI VE KOTA KONTROLLERİ (UTC TARIH YÖNETIMI)
@@ -238,7 +252,6 @@ def get_current_user(request: Request):
     return user_dict
 
 def get_today_utc_str() -> str:
-    """Tarih sorgularını UTC standart zaman dilimine sabitler."""
     return datetime.now(timezone.utc).date().isoformat()
 
 def get_search_count(identifier: str) -> int:
@@ -424,7 +437,6 @@ async def automated_radar_monitor():
             conn = get_db()
             cursor = conn.cursor()
 
-            # 1. Tekil Uçuş Takibi
             cursor.execute("""
                 SELECT tf.id, tf.user_id, tf.flight_num, tf.airline, tf.destination_name, tf.last_status, u.telegram_chat_id
                 FROM tracked_flights tf
@@ -457,7 +469,6 @@ async def automated_radar_monitor():
                             )
                             await send_telegram(tf["telegram_chat_id"], alert_msg)
 
-            # 2. Koridor Takibi
             cursor.execute("""
                 SELECT w.route_code, w.destination_name, u.telegram_chat_id 
                 FROM watchlist w
@@ -491,10 +502,9 @@ async def startup_event():
     asyncio.create_task(automated_radar_monitor())
 
 # ---------------------------------------------------------
-# DODO PAYMENTS WEBHOOK (GÜVENLİK & IMZA DOĞRULAMA EKLENDİ)
+# DODO PAYMENTS WEBHOOK
 # ---------------------------------------------------------
 def verify_dodo_signature(payload_bytes: bytes, headers: dict) -> bool:
-    """Dodo Payments Webhook Doğrulaması (Standard Webhook / HMAC)"""
     if not DODO_WEBHOOK_SECRET:
         return DEBUG_MODE
 
@@ -553,8 +563,8 @@ async def dodo_webhook(request: Request):
             pro_msg = (
                 "🎉 <b>Gulf Disruption Radar | PRO Activated!</b>\n\n"
                 "Your account is upgraded to <b>PRO</b>.\n"
-                "• Unlimited lookups & CSV export\n"
-                "• Unlimited corridor & individual flight tracking\n"
+                "• 50 daily corridor lookups & CSV export\n"
+                "• Up to 20 tracked routes & individual flights\n"
                 "• Instant state-change push alerts"
             )
             await send_telegram(user_row["telegram_chat_id"], pro_msg)
@@ -571,7 +581,7 @@ async def dodo_webhook(request: Request):
     return {"status": "success"}
 
 # ---------------------------------------------------------
-# CSV RAPOR DIŞA AKTARMA (EXPORT CSV)
+# CSV RAPOR DIŞA AKTARMA
 # ---------------------------------------------------------
 @app.get("/export-csv")
 async def export_csv(request: Request):
@@ -600,7 +610,7 @@ async def export_csv(request: Request):
     )
 
 # ---------------------------------------------------------
-# PWA (PROGRESSIVE WEB APP) ENDPOINT'LERİ
+# PWA ENDPOINT'LERİ
 # ---------------------------------------------------------
 @app.get("/manifest.json")
 async def get_manifest():
@@ -611,7 +621,7 @@ async def get_sw():
     return FileResponse(static_dir / "sw.js", media_type="application/javascript")
 
 # ---------------------------------------------------------
-# ANA SAYFA & TAKİP ROTALARI
+# ANA SAYFA & KOTA YÖNETİMİ
 # ---------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: Optional[str] = None):
@@ -622,30 +632,33 @@ async def index(request: Request, q: Optional[str] = None):
     search_count = get_search_count(identifier)
 
     if is_pro:
-        search_limit = 999999
-        search_limit_reached = False
-        remaining_searches = "Unlimited"
-    elif user:
-        search_limit = 5
+        search_limit = PRO_DAILY_SEARCH_LIMIT
         search_limit_reached = search_count >= search_limit
         remaining_searches = max(0, search_limit - search_count)
+        
+        # PRO kullanıcı kotayı aşarsa otomatik duraklat ve admin'e bildir
+        if search_limit_reached and search_count == search_limit:
+            notify_admin_quota_exceeded(user["email"], search_count)
     else:
-        search_limit = 3
+        search_limit = FREE_SEARCH_LIMIT
         search_limit_reached = search_count >= search_limit
         remaining_searches = max(0, search_limit - search_count)
 
     if q and not search_limit_reached:
         increment_search_count(identifier)
-        if not is_pro:
-            search_count += 1
-            remaining_searches = max(0, search_limit - search_count)
-            search_limit_reached = search_count >= search_limit
+        search_count += 1
+        remaining_searches = max(0, search_limit - search_count)
+        search_limit_reached = search_count >= search_limit
+        if is_pro and search_limit_reached:
+            notify_admin_quota_exceeded(user["email"], search_count)
 
     radar_data = parse_radar_data(search_query=q or "")
 
     watchlist = []
     tracked_flights = []
     watchlist_limit_reached = False
+    max_allowed_watchlist = PRO_MAX_WATCHLIST_LIMIT if is_pro else 3
+
     if user:
         conn = get_db()
         cursor = conn.cursor()
@@ -657,7 +670,7 @@ async def index(request: Request, q: Optional[str] = None):
         conn.close()
 
         total_tracked = len(watchlist) + len(tracked_flights)
-        if not is_pro and total_tracked >= 3:
+        if total_tracked >= max_allowed_watchlist:
             watchlist_limit_reached = True
 
     return templates.TemplateResponse(
@@ -677,22 +690,25 @@ async def index(request: Request, q: Optional[str] = None):
             "is_pro": is_pro,
             "dodo_monthly_link": DODO_MONTHLY_LINK,
             "dodo_annual_link": DODO_ANNUAL_LINK,
+            "max_allowed_watchlist": max_allowed_watchlist,
         }
     )
 
-# Koridor Takibi
 @app.post("/track")
 async def track_route(request: Request, route_code: str = Form(...), destination_name: str = Form(...)):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/auth?mode=login", status_code=303)
 
+    is_pro = bool(user.get("is_pro"))
+    max_allowed = PRO_MAX_WATCHLIST_LIMIT if is_pro else 3
+
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute(format_query("SELECT COUNT(*) as count FROM watchlist WHERE user_id = ?"), (user["id"],))
-    count = cursor.fetchone()["count"]
+    cursor.execute(format_query("SELECT (SELECT COUNT(*) FROM watchlist WHERE user_id = ?) + (SELECT COUNT(*) FROM tracked_flights WHERE user_id = ?) as total"), (user["id"], user["id"]))
+    total_count = cursor.fetchone()["total"]
 
-    if not user.get("is_pro") and count >= 3:
+    if total_count >= max_allowed:
         conn.close()
         return RedirectResponse(url="/?limit_reached=1", status_code=303)
 
@@ -717,7 +733,6 @@ async def untrack_route(request: Request, item_id: int = Form(...)):
     conn.close()
     return RedirectResponse(url="/", status_code=303)
 
-# Tekil Uçuş Takibi
 @app.post("/track-flight")
 async def track_individual_flight(
     request: Request,
@@ -731,12 +746,15 @@ async def track_individual_flight(
     if not user:
         return RedirectResponse(url="/auth?mode=login", status_code=303)
 
+    is_pro = bool(user.get("is_pro"))
+    max_allowed = PRO_MAX_WATCHLIST_LIMIT if is_pro else 3
+
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute(format_query("SELECT COUNT(*) as count FROM tracked_flights WHERE user_id = ?"), (user["id"],))
-    count = cursor.fetchone()["count"]
+    cursor.execute(format_query("SELECT (SELECT COUNT(*) FROM watchlist WHERE user_id = ?) + (SELECT COUNT(*) FROM tracked_flights WHERE user_id = ?) as total"), (user["id"], user["id"]))
+    total_count = cursor.fetchone()["total"]
 
-    if not user.get("is_pro") and count >= 3:
+    if total_count >= max_allowed:
         conn.close()
         return RedirectResponse(url="/?limit_reached=1", status_code=303)
 
@@ -781,7 +799,7 @@ async def sync_live(request: Request):
     return RedirectResponse(url="/", status_code=303)
 
 # ---------------------------------------------------------
-# AUTH ROTALARI (GİRİŞ & KAYIT)
+# AUTH ROTALARI
 # ---------------------------------------------------------
 @app.get("/auth", response_class=HTMLResponse)
 async def auth_page(request: Request, mode: Optional[str] = "register"):
