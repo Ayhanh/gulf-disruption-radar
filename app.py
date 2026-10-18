@@ -369,9 +369,6 @@ def parse_radar_data(search_query=""):
         q = search_query.lower()
         all_flights = [fl for fl in all_flights if q in fl["dest_name"].lower() or q in fl["dest_iata"].lower() or q in fl["airline"].lower() or q in fl["flight_num"].lower()]
 
-    # Uçuşları saatine göre kronolojik olarak sırala (en eskiden yeniye)
-    all_flights = sorted(all_flights, key=lambda x: x.get("time", ""))
-
     critical_routes = []
     for iata, r in route_stats.items():
         if r["canceled"] > 0 or r["delayed"] > 0:
