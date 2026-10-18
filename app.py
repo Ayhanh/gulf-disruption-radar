@@ -41,10 +41,10 @@ DODO_ANNUAL_LINK = os.getenv("Radar_Pro_Annual", "").strip()
 
 ADMIN_EMAILS = [email.strip().lower() for email in os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").split(",") if email.strip()]
 
-# KOTA VE PLAN LİMİTLERİ
-FREE_SEARCH_LIMIT = 3
-PRO_DAILY_SEARCH_LIMIT = 50
-PRO_MAX_WATCHLIST_LIMIT = 20
+# GÜNCELLENEN PLAN LİMİTLERİ
+FREE_MONTHLY_SEARCH_LIMIT = 5
+PRO_DAILY_SEARCH_LIMIT = 200
+PRO_MAX_WATCHLIST_LIMIT = 50
 
 app = FastAPI(title="Gulf Disruption Radar")
 
@@ -109,9 +109,9 @@ def init_db():
             CREATE TABLE IF NOT EXISTS search_logs (
                 id SERIAL PRIMARY KEY,
                 identifier TEXT NOT NULL,
-                search_date DATE NOT NULL,
+                search_period TEXT NOT NULL,
                 count INTEGER DEFAULT 1,
-                UNIQUE(identifier, search_date)
+                UNIQUE(identifier, search_period)
             );
             CREATE TABLE IF NOT EXISTS sessions (
                 session_id TEXT PRIMARY KEY,
@@ -159,9 +159,9 @@ def init_db():
             CREATE TABLE IF NOT EXISTS search_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 identifier TEXT NOT NULL,
-                search_date DATE NOT NULL,
+                search_period TEXT NOT NULL,
                 count INTEGER DEFAULT 1,
-                UNIQUE(identifier, search_date)
+                UNIQUE(identifier, search_period)
             );
         """)
         cursor.execute("""
@@ -211,15 +211,15 @@ def notify_admin_quota_exceeded(user_email: str, current_searches: int):
     admin_chat = os.getenv("MY_TELEGRAM_ID", "").strip()
     if admin_chat:
         msg = (
-            "🚨 <b>GULF RADAR | QUOTA EXCEEDED ALERT</b>\n\n"
-            f"User <code>{user_email}</code> reached the Pro limit ({current_searches} searches).\n"
+            "🚨 <b>GULF RADAR | PRO QUOTA EXCEEDED ALERT</b>\n\n"
+            f"User <code>{user_email}</code> reached the Pro limit ({current_searches} searches today).\n"
             "System paused automated lookups for this user.\n\n"
             "💡 <i>Action Required:</i> Create a custom Gold Tier or increase subscription fee."
         )
         asyncio.create_task(send_telegram(admin_chat, msg))
 
 # ---------------------------------------------------------
-# KULLANICI VE KOTA KONTROLLERİ (UTC TARIH YÖNETIMI)
+# KULLANICI VE KOTA KONTROLLERİ (AYLIK/GÜNLÜK UTC)
 # ---------------------------------------------------------
 def is_valid_telegram_chat_id(chat_id: str) -> bool:
     return bool(re.fullmatch(r"-?\d{6,20}", str(chat_id).strip())) if chat_id else False
@@ -251,29 +251,30 @@ def get_current_user(request: Request):
         user_dict["is_admin"] = False
     return user_dict
 
-def get_today_utc_str() -> str:
-    return datetime.now(timezone.utc).date().isoformat()
+def get_search_period(is_pro: bool) -> str:
+    now_utc = datetime.now(timezone.utc)
+    return now_utc.date().isoformat() if is_pro else now_utc.strftime("%Y-%m")
 
-def get_search_count(identifier: str) -> int:
-    today_utc = get_today_utc_str()
+def get_search_count(identifier: str, is_pro: bool) -> int:
+    period_str = get_search_period(is_pro)
     conn = get_db()
     cursor = conn.cursor()
-    query = format_query("SELECT count FROM search_logs WHERE identifier = ? AND search_date = ?")
-    cursor.execute(query, (identifier, today_utc))
+    query = format_query("SELECT count FROM search_logs WHERE identifier = ? AND search_period = ?")
+    cursor.execute(query, (identifier, period_str))
     row = cursor.fetchone()
     conn.close()
     return row["count"] if row else 0
 
-def increment_search_count(identifier: str):
-    today_utc = get_today_utc_str()
+def increment_search_count(identifier: str, is_pro: bool):
+    period_str = get_search_period(is_pro)
     conn = get_db()
     cursor = conn.cursor()
     query = format_query("""
-        INSERT INTO search_logs (identifier, search_date, count) 
+        INSERT INTO search_logs (identifier, search_period, count) 
         VALUES (?, ?, 1)
-        ON CONFLICT(identifier, search_date) DO UPDATE SET count = search_logs.count + 1
+        ON CONFLICT(identifier, search_period) DO UPDATE SET count = search_logs.count + 1
     """)
-    cursor.execute(query, (identifier, today_utc))
+    cursor.execute(query, (identifier, period_str))
     conn.commit()
     conn.close()
 
@@ -563,8 +564,8 @@ async def dodo_webhook(request: Request):
             pro_msg = (
                 "🎉 <b>Gulf Disruption Radar | PRO Activated!</b>\n\n"
                 "Your account is upgraded to <b>PRO</b>.\n"
-                "• 50 daily corridor lookups & CSV export\n"
-                "• Up to 20 tracked routes & individual flights\n"
+                f"• Up to {PRO_DAILY_SEARCH_LIMIT} daily corridor lookups & CSV export\n"
+                f"• Track up to {PRO_MAX_WATCHLIST_LIMIT} routes & individual flights\n"
                 "• Instant state-change push alerts"
             )
             await send_telegram(user_row["telegram_chat_id"], pro_msg)
@@ -601,7 +602,7 @@ async def export_csv(request: Request):
         ])
 
     output.seek(0)
-    today_utc = get_today_utc_str()
+    today_utc = datetime.now(timezone.utc).date().isoformat()
     filename = f"Gulf_Disruption_Report_{today_utc}.csv"
     return StreamingResponse(
         iter([output.getvalue()]),
@@ -629,23 +630,17 @@ async def index(request: Request, q: Optional[str] = None):
     client_ip = request.client.host if request.client else "127.0.0.1"
     is_pro = bool(user and user.get("is_pro"))
     identifier = f"user_{user['id']}" if user else f"guest_{client_ip}"
-    search_count = get_search_count(identifier)
+    
+    search_limit = PRO_DAILY_SEARCH_LIMIT if is_pro else FREE_MONTHLY_SEARCH_LIMIT
+    search_count = get_search_count(identifier, is_pro)
+    search_limit_reached = search_count >= search_limit
+    remaining_searches = max(0, search_limit - search_count)
 
-    if is_pro:
-        search_limit = PRO_DAILY_SEARCH_LIMIT
-        search_limit_reached = search_count >= search_limit
-        remaining_searches = max(0, search_limit - search_count)
-        
-        # PRO kullanıcı kotayı aşarsa otomatik duraklat ve admin'e bildir
-        if search_limit_reached and search_count == search_limit:
-            notify_admin_quota_exceeded(user["email"], search_count)
-    else:
-        search_limit = FREE_SEARCH_LIMIT
-        search_limit_reached = search_count >= search_limit
-        remaining_searches = max(0, search_limit - search_count)
+    if is_pro and search_limit_reached and search_count == search_limit:
+        notify_admin_quota_exceeded(user["email"], search_count)
 
     if q and not search_limit_reached:
-        increment_search_count(identifier)
+        increment_search_count(identifier, is_pro)
         search_count += 1
         remaining_searches = max(0, search_limit - search_count)
         search_limit_reached = search_count >= search_limit
