@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gulf Disruption Radar - Real-Time GCC Air Cargo & Corridor Intelligence</title>
-
+    <title>UK Company Radar - Trade with Confidence & Protect Your Cash Flow</title>
     <!-- FAVICON -->
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 
@@ -16,45 +15,56 @@
     <!-- APPLE / IOS META TAGS -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="GulfRadar">
+    <meta name="apple-mobile-web-app-title" content="CompanyRadar">
     <link rel="apple-touch-icon" href="/static/favicon.svg">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; }</style>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased">
 
-    <!-- NAVBAR -->
+    <!-- ÜST MENÜ & NAVBAR -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
             <a href="/" class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shadow-sm">
-                    📡
+                    🛡️
                 </div>
                 <div>
-                    <span class="font-bold text-base text-slate-900 block leading-tight">Gulf Disruption Radar</span>
-                    <span class="text-[11px] text-slate-500 font-medium">GCC Cargo & Passenger Corridor Intelligence</span>
+                    <span class="font-bold text-base text-slate-900 block leading-tight">UK Company Radar</span>
+                    <span class="text-[11px] text-slate-500 font-medium">Proactive Partner & Solvency Intelligence</span>
                 </div>
             </a>
 
             <div class="flex items-center gap-3">
-                <a href="/sync" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition">
-                    Sync Live DXB
-                </a>
-
                 {% if user %}
                     <div class="hidden sm:flex items-center gap-2 mr-2">
-                        {% if is_pro %}
+                        {% if user.is_admin %}
+                            <a href="/admin/users" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 transition">
+                                👑 ADMIN (USERS)
+                            </a>
+                        {% elif user_tier == 2 %}
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                🏆 GOLD PLAN (100)
+                            </span>
+                        {% elif user_tier == 1 %}
                             <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                ⭐ PRO PLAN
+                                ⭐ PRO PLAN (50)
                             </span>
                         {% else %}
                             <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-                                FREE TIER
+                                FREE TIER (3)
                             </span>
                         {% endif %}
                         <span class="text-xs text-slate-500 font-medium">{{ user.email }}</span>
+                    </div>
+
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Radar Active
                     </div>
 
                     <a href="/auth/logout" class="text-xs font-semibold text-slate-600 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition">
@@ -74,33 +84,30 @@
 
     <main class="max-w-6xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
 
-        <!-- HERO -->
+        <!-- HERO BÖLÜMÜ -->
         <section class="text-center max-w-3xl mx-auto pt-4 pb-2 space-y-3">
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold tracking-wide">
-                <span>⚡</span> Live Monitoring: Dubai (DXB) Hub Airspace
+                <span>🛡️</span> Smart Cash Flow & Partner Solvency Monitoring
             </div>
             <h1 class="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                Operate with Certainty. <br class="hidden sm:inline"> Protect Your Supply Chain.
+                Trade with Confidence. <br class="hidden sm:inline"> Protect Your Cash Flow.
             </h1>
             <p class="text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl mx-auto">
-                Continuous live tracking of GCC air corridors, delays, and airspace cancellations. Receive instant operational warnings before cargo penalties hit.
+                Keep a clear, continuous view of your key clients and suppliers. Receive timely, quiet updates whenever corporate filings, strike-off notices, or corporate statuses change.
             </p>
         </section>
 
-        <!-- AERO DATABOX ZORUNLU ATIF BİLDİRİMİ -->
-        <div class="bg-sky-50 border border-sky-200 rounded-xl p-3 text-center text-xs text-sky-900 shadow-sm">
-            Flight data provided by <a href="https://aerodatabox.com" target="_blank" class="font-semibold underline hover:text-sky-700">AeroDataBox</a>. Real-time aviation telemetry feed. (Required for Basic tier compliance).
-        </div>
-
-        <!-- KOTA & PAYWALL KARTLARI -->
+        <!-- KOTA VE PAYWALL BİLDİRİMLERİ -->
         {% if search_limit_reached %}
         <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h4 class="font-bold text-sm text-amber-900">Monthly Query Limit Reached ({{ search_count }}/{{ search_limit }})</h4>
-                <p class="text-xs text-amber-800 mt-1">Upgrade to Pro for up to 200 corridor queries/day and continuous 24/7 background sync.</p>
+                <h4 class="font-bold text-sm text-amber-900">Daily Search Capacity Reached ({{ search_count }}/{{ search_limit }})</h4>
+                <p class="text-xs text-amber-800 mt-1">
+                    Your daily complimentary searches reset at midnight UTC. You can upgrade to Pro or Gold for unlimited on-demand entity lookups.
+                </p>
             </div>
-            <a href="#pricing" class="inline-flex justify-center items-center whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
-                Unlock Pro Plan →
+            <a href="{{ pro_monthly_link }}&redirect_url=https://uk-company-radar.onrender.com%2F%3Fpayment%3Dsuccess{% if user %}&customer_email={{ user.email }}{% endif %}" target="_blank" class="inline-flex justify-center items-center whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
+                Unlock Unlimited Searches →
             </a>
         </div>
         {% endif %}
@@ -108,11 +115,13 @@
         {% if watchlist_limit_reached %}
         <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 sm:p-5 text-indigo-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h4 class="font-bold text-sm text-indigo-900">Tracking Limit Reached ({{ max_allowed_watchlist }} Items Max)</h4>
-                <p class="text-xs text-indigo-800 mt-1">Your current plan monitors up to {{ max_allowed_watchlist }} routes or flights.</p>
+                <h4 class="font-bold text-sm text-indigo-900">Portfolio Monitoring Limit Reached ({{ watchlist|length }}/{{ max_watchlist_limit }} Entities)</h4>
+                <p class="text-xs text-indigo-800 mt-1">
+                    You have reached the maximum entity limit for your current plan. Upgrade to Gold for up to 100 monitored entities and batch CSV imports.
+                </p>
             </div>
-            <a href="#pricing" class="inline-flex justify-center items-center whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
-                Upgrade to Pro (50 Routes) →
+            <a href="{{ gold_monthly_link }}&redirect_url=https://uk-company-radar.onrender.com%2F%3Fpayment%3Dsuccess{% if user %}&customer_email={{ user.email }}{% endif %}" target="_blank" class="inline-flex justify-center items-center whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
+                Upgrade to Gold Plan →
             </a>
         </div>
         {% endif %}
@@ -120,15 +129,14 @@
         <!-- ARAMA FORMU -->
         <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                <h2 class="text-xs font-bold tracking-wider uppercase text-slate-500">LOOK UP AIR ROUTE OR FLIGHT</h2>
-                <div class="flex items-center gap-2">
-                    <a href="/export-csv" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
-                        <span>📥</span> Export CSV
-                    </a>
-                    <span class="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold {{ 'bg-amber-100 text-amber-800' if search_limit_reached else 'bg-slate-100 text-slate-700' }}">
-                        Queries Left: {{ remaining_searches }}
-                    </span>
-                </div>
+                <h2 class="text-xs font-bold tracking-wider uppercase text-slate-500">LOOK UP ANY UK REGISTERED BUSINESS</h2>
+                <span class="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold {{ 'bg-amber-100 text-amber-800' if search_limit_reached else 'bg-slate-100 text-slate-700' }}">
+                    {% if is_pro %}
+                        Daily Free Searches: Unlimited
+                    {% else %}
+                        Daily Free Searches: {{ remaining_searches }}/{{ search_limit }}
+                    {% endif %}
+                </span>
             </div>
 
             <form action="/" method="GET" class="flex flex-col sm:flex-row gap-3">
@@ -136,296 +144,201 @@
                     type="text" 
                     name="q" 
                     value="{{ query or '' }}" 
-                    placeholder="Search by destination city, IATA code, or flight number (e.g. Riyadh, RUH, flydubai)..." 
+                    placeholder="Search by company name or registry number (e.g. Barclays, Dyson, Tesco)..." 
+                    required 
                     class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition"
                 >
                 <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2.5 px-6 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
-                    <span>🔍</span> Check Corridor
+                    <span>🔍</span> Check Standing
                 </button>
             </form>
 
+            <!-- HIZLI ÖRNEK ARAMA BUTONLARI -->
             <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <span class="font-medium text-slate-400">Quick checks:</span>
-                <a href="/?q=RUH" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">DXB ➔ RUH (Riyadh)</a>
-                <a href="/?q=DMM" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">DXB ➔ DMM (Dammam)</a>
-                <a href="/?q=JED" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">DXB ➔ JED (Jeddah)</a>
+                <a href="/?q=Barclays" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Barclays</a>
+                <a href="/?q=Dyson" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Dyson</a>
+                <a href="/?q=Tesco" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Tesco</a>
+                <a href="/?q=Glens+of+Antrim" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Glens of Antrim</a>
             </div>
         </section>
 
-        <!-- 3'LÜ METRİK KARTLARI -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white rounded-2xl border border-slate-200 p-5 flex items-center justify-between shadow-sm">
-                <div>
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Flights Monitored</p>
-                    <p class="text-3xl font-extrabold text-slate-900 mt-1">{{ data.total }}</p>
-                </div>
-                <div class="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 text-xl font-bold">✈️</div>
-            </div>
-            <div class="bg-white rounded-2xl border border-rose-200 p-5 flex items-center justify-between shadow-sm bg-rose-50/20">
-                <div>
-                    <p class="text-xs font-semibold text-rose-600 uppercase tracking-wider">Live Cancellations</p>
-                    <p class="text-3xl font-extrabold text-rose-600 mt-1">{{ data.canceled }}</p>
-                </div>
-                <div class="w-12 h-12 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 text-xl font-bold">🚫</div>
-            </div>
-            <div class="bg-white rounded-2xl border border-amber-200 p-5 flex items-center justify-between shadow-sm bg-amber-50/20">
-                <div>
-                    <p class="text-xs font-semibold text-amber-600 uppercase tracking-wider">Corridor Delays</p>
-                    <p class="text-3xl font-extrabold text-amber-600 mt-1">{{ data.delayed }}</p>
-                </div>
-                <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 text-xl font-bold">⏱️</div>
-            </div>
-        </div>
-
-        <!-- 1. TABLO: KRİTİK KORİDORLAR -->
+        <!-- ARAMA SONUÇLARI -->
+        {% if results %}
         <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-xs font-bold tracking-wider uppercase text-slate-500">CRITICAL CORRIDOR DISRUPTION STREAM</h3>
-                    <span class="text-xs text-slate-400">Routes experiencing severe air cancellations</span>
+            <h3 class="text-xs font-bold tracking-wider uppercase text-slate-500">UK CORPORATE REGISTRY RECORDS ({{ results|length }})</h3>
+            <div class="divide-y divide-slate-100">
+                {% for item in results %}
+                <div class="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            {% if user %}
+                            <button type="button" onclick="openCompanyModal('{{ item.company_number }}')" class="font-bold text-sm text-slate-900 hover:text-blue-600 hover:underline text-left">
+                                {{ item.title }} 🔍
+                            </button>
+                            {% else %}
+                            <span class="font-bold text-sm text-slate-900">{{ item.title }}</span>
+                            {% endif %}
+                            <span class="text-xs font-mono text-slate-500">#{{ item.company_number }}</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-slate-500">
+                            <span class="px-2 py-0.5 rounded text-[11px] font-semibold {{ 'bg-emerald-50 text-emerald-700 border border-emerald-200' if item.company_status == 'active' else 'bg-rose-50 text-rose-700 border border-rose-200' }}">
+                                {{ (item.company_status or 'unknown')|upper }}
+                            </span>
+                            <span>• {{ item.company_type or 'Limited' }}</span>
+                            {% if item.address_snippet %}
+                                <span>• {{ item.address_snippet }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div>
+                        {% if user %}
+                            <form action="/track" method="POST">
+                                <input type="hidden" name="company_number" value="{{ item.company_number }}">
+                                <input type="hidden" name="company_name" value="{{ item.title }}">
+                                <input type="hidden" name="status" value="{{ item.company_status or 'active' }}">
+                                <input type="hidden" name="type" value="{{ item.company_type or '' }}">
+                                <input type="hidden" name="jurisdiction" value="{{ item.address_snippet or '' }}">
+                                <button type="submit" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold py-2 px-4 rounded-xl shadow-sm transition flex items-center justify-center gap-1.5">
+                                    <span>+</span> Add to Monitored List
+                                </button>
+                            </form>
+                        {% else %}
+                            <a href="/auth" class="w-full sm:w-auto inline-block text-center bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold py-2 px-4 rounded-xl transition">
+                                Sign In to Monitor
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
-                <span class="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                    {{ data.critical_routes|length }} Affected Hubs
-                </span>
+                {% endfor %}
+            </div>
+        </section>
+        {% elif query %}
+        <div class="bg-white border border-slate-200 rounded-2xl p-8 text-center text-sm text-slate-500">
+            No corporate records found for "<b>{{ query }}</b>".
+        </div>
+        {% endif %}
+
+        <!-- TAKİP EDİLEN PORTFÖY LİSTESİ VE CSV YÜKLEME BUTONU -->
+        {% if user %}
+        <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h3 class="text-xs font-bold tracking-wider uppercase text-slate-500">MONITORED BUSINESS PARTNERS</h3>
+                    <span class="text-xs text-slate-400">Automated Hourly Registry & Status Radar</span>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    {% if user_tier > 0 %}
+                    <button type="button" onclick="openCsvModal()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5">
+                        <span>📥</span> Import CSV Portfolio
+                    </button>
+                    {% endif %}
+                    
+                    <span class="text-xs font-semibold text-slate-600">
+                        Portfolio: {{ watchlist|length }}/{{ max_watchlist_limit }} Entities
+                    </span>
+                </div>
             </div>
 
+            {% if watchlist %}
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs border-collapse">
                     <thead>
                         <tr class="border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[11px]">
                             <th class="py-3 font-semibold">Status</th>
-                            <th class="py-3 font-semibold">Corridor / Hub</th>
-                            <th class="py-3 font-semibold">IATA</th>
-                            <th class="py-3 font-semibold">Disruption Impact</th>
-                            <th class="py-3 font-semibold text-right">Action</th>
+                            <th class="py-3 font-semibold">Company Name</th>
+                            <th class="py-3 font-semibold">Reg No</th>
+                            <th class="py-3 font-semibold">Jurisdiction / Type</th>
+                            <th class="py-3 font-semibold text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        {% for r in data.critical_routes %}
+                        {% for item in watchlist %}
                         <tr>
                             <td class="py-3.5">
-                                <span class="px-2 py-0.5 rounded text-[11px] font-bold {{ 'bg-rose-50 text-rose-600 border border-rose-200' if r.risk_level == 'CRITICAL' else 'bg-amber-50 text-amber-700 border border-amber-200' }}">
-                                    {{ r.risk_level }}
+                                <span class="px-2 py-0.5 rounded text-[11px] font-bold {{ 'bg-emerald-50 text-emerald-700 border border-emerald-200' if item.status == 'active' else 'bg-rose-50 text-rose-700 border border-rose-200' }}">
+                                    {{ item.status|upper }}
                                 </span>
                             </td>
-                            <td class="py-3.5 font-bold text-slate-900">DXB ➔ {{ r.name }}</td>
-                            <td class="py-3.5 font-mono text-slate-500">{{ r.iata }}</td>
-                            <td class="py-3.5 text-slate-600">
-                                <span class="font-bold text-rose-600">{{ r.canceled }} cancelled</span> out of {{ r.total }} tracked
+                            <td class="py-3.5">
+                                <button type="button" 
+                                        onclick="openCompanyModal('{{ item.company_number }}')" 
+                                        class="font-bold text-slate-900 hover:text-blue-600 hover:underline text-left focus:outline-none flex items-center gap-1.5">
+                                    <span>{{ item.company_name }}</span>
+                                    <span class="text-[10px] text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded font-normal">Details ↗</span>
+                                </button>
                             </td>
+                            <td class="py-3.5 font-mono text-slate-500">{{ item.company_number }}</td>
+                            <td class="py-3.5 text-slate-500">{{ item.jurisdiction or item.type or 'UK Entity' }}</td>
                             <td class="py-3.5 text-right">
-                                {% if user %}
-                                <form action="/track" method="POST" class="inline">
-                                    <input type="hidden" name="route_code" value="{{ r.iata }}">
-                                    <input type="hidden" name="destination_name" value="{{ r.name }}">
-                                    <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-1.5 px-3 rounded-lg transition">
-                                        + Track Route
+                                <form action="/untrack" method="POST" class="inline">
+                                    <input type="hidden" name="company_id" value="{{ item.id }}">
+                                    <button type="submit" class="text-rose-600 hover:text-rose-800 font-semibold text-xs">
+                                        Remove
                                     </button>
                                 </form>
-                                {% else %}
-                                <a href="/auth" class="text-xs text-sky-600 hover:underline font-semibold">Sign In to Track</a>
-                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-            <!-- Atıf Alanı -->
-            <div class="text-[11px] text-slate-400 text-right pt-2 border-t border-slate-100">
-                Flight data provided by <a href="https://aerodatabox.com" target="_blank" class="underline hover:text-slate-600">AeroDataBox</a>
+            {% else %}
+            <div class="py-8 text-center text-xs text-slate-400">
+                You are not monitoring any entities yet. Search above and click <b>"Add to Monitored List"</b> or use CSV import to activate automated tracking.
             </div>
-        </section>
-
-        <!-- KULLANICININ MONİTÖR ETTİĞİ PORTFÖY -->
-        {% if user %}
-        <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-xs font-bold tracking-wider uppercase text-slate-500">MONITORED PORTFOLIO</h3>
-                    <span class="text-xs text-slate-400">24/7 background Telegram disruption alerts</span>
-                </div>
-                <span class="text-xs font-semibold text-slate-600">
-                    {{ watchlist|length + tracked_flights|length }} / {{ max_allowed_watchlist }} Max Items
-                </span>
-            </div>
-
-            <!-- 1. Takip Edilen Koridorlar -->
-            <div>
-                <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tracked Routes</h4>
-                {% if watchlist %}
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs border-collapse">
-                        <thead>
-                            <tr class="border-b border-slate-100 text-slate-400 uppercase text-[10px]">
-                                <th class="py-2">Route</th>
-                                <th class="py-2">Destination</th>
-                                <th class="py-2">Channel</th>
-                                <th class="py-2 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            {% for item in watchlist %}
-                            <tr>
-                                <td class="py-2.5 font-mono font-bold text-slate-900">DXB ➔ {{ item.route_code }}</td>
-                                <td class="py-2.5 text-slate-700">{{ item.destination_name }}</td>
-                                <td class="py-2.5">
-                                    <span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold text-[10px] border border-emerald-200">Telegram Active</span>
-                                </td>
-                                <td class="py-2.5 text-right">
-                                    <form action="/untrack" method="POST" class="inline">
-                                        <input type="hidden" name="item_id" value="{{ item.id }}">
-                                        <button type="submit" class="text-rose-600 hover:text-rose-800 font-semibold text-[11px]">Remove</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <p class="text-xs text-slate-400 italic">No corridors tracked yet.</p>
-                {% endif %}
-            </div>
-
-            <!-- 2. Takip Edilen Tekil Uçuşlar -->
-            <div>
-                <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Individual Monitored Flights (State-Change Alert)</h4>
-                {% if tracked_flights %}
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs border-collapse">
-                        <thead>
-                            <tr class="border-b border-slate-100 text-slate-400 uppercase text-[10px]">
-                                <th class="py-2">Flight</th>
-                                <th class="py-2">Airline</th>
-                                <th class="py-2">Destination</th>
-                                <th class="py-2">Latest Status</th>
-                                <th class="py-2 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            {% for f in tracked_flights %}
-                            <tr>
-                                <td class="py-2.5 font-mono font-bold text-slate-900">{{ f.flight_num }}</td>
-                                <td class="py-2.5 text-slate-700">{{ f.airline }}</td>
-                                <td class="py-2.5 text-slate-700">{{ f.destination_name }}</td>
-                                <td class="py-2.5">
-                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ 'bg-rose-50 text-rose-600 border border-rose-200' if f.last_status == 'Canceled' else ('bg-amber-50 text-amber-700 border border-amber-200' if f.last_status == 'Delayed' else 'bg-slate-100 text-slate-700 border border-slate-200') }}">
-                                        {{ f.last_status|upper }}
-                                    </span>
-                                </td>
-                                <td class="py-2.5 text-right">
-                                    <form action="/untrack-flight" method="POST" class="inline">
-                                        <input type="hidden" name="flight_id" value="{{ f.id }}">
-                                        <button type="submit" class="text-rose-600 hover:text-rose-800 font-semibold text-[11px]">Remove</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <p class="text-xs text-slate-400 italic">No individual flights tracked yet. Click "+ Track" on any flight in the timetable below.</p>
-                {% endif %}
-            </div>
+            {% endif %}
         </section>
         {% endif %}
 
-        <!-- 2. TABLO: KOMPAKT 8 UÇUŞLUK CANLI UÇUŞ TABLOSU -->
-        <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div class="flex items-center justify-between">
+        <!-- TELEGRAM BİLDİRİM KARTI -->
+        {% if user %}
+        <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-sm border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5 text-left w-full md:w-auto">
+                <div class="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-xl flex-shrink-0">
+                    📲
+                </div>
                 <div>
-                    <h3 class="text-xs font-bold tracking-wider uppercase text-slate-500">LIVE DEPARTURE TIMETABLE</h3>
-                    <p class="text-xs text-slate-400">Showing top 8 flights · Click any row or 'Inspect' for full telemetry</p>
-                </div>
-                
-                <button type="button" onclick="openAllFlightsModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition shadow-sm">
-                    <span>⚡ View All ({{ data.all_flights|length }} Flights) ↗</span>
-                </button>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs border-collapse">
-                    <thead>
-                        <tr class="border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[11px]">
-                            <th class="py-3 font-semibold">Time (GST)</th>
-                            <th class="py-3 font-semibold">Flight</th>
-                            <th class="py-3 font-semibold">Airline</th>
-                            <th class="py-3 font-semibold">Destination</th>
-                            <th class="py-3 font-semibold">Gate</th>
-                            <th class="py-3 font-semibold">Status</th>
-                            <th class="py-3 font-semibold text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        {% for fl in data.top_8_flights %}
-                        <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="handleRowClick(event, this)" data-flight='{{ fl|tojson }}'>
-                            <td class="py-3.5 font-mono font-bold text-slate-700">{{ fl.time }}</td>
-                            <td class="py-3.5 font-mono font-semibold text-slate-900">{{ fl.flight_num }}</td>
-                            <td class="py-3.5 text-slate-600">{{ fl.airline }}</td>
-                            <td class="py-3.5 font-medium text-slate-900">{{ fl.dest_name }} ({{ fl.dest_iata }})</td>
-                            <td class="py-3.5 text-slate-500">T{{ fl.terminal }} / G-{{ fl.gate }}</td>
-                            <td class="py-3.5">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ 'bg-rose-50 text-rose-600 border border-rose-200' if fl.status == 'Canceled' else ('bg-amber-50 text-amber-700 border border-amber-200' if fl.status == 'Delayed' else 'bg-emerald-50 text-emerald-700 border border-emerald-200') }}">
-                                    {{ fl.status|upper }}
-                                </span>
-                            </td>
-                            <td class="py-3.5 text-right space-x-2">
-                                {% if user %}
-                                <form action="/track-flight" method="POST" class="inline" onclick="event.stopPropagation();">
-                                    <input type="hidden" name="flight_num" value="{{ fl.flight_num }}">
-                                    <input type="hidden" name="airline" value="{{ fl.airline }}">
-                                    <input type="hidden" name="destination_name" value="{{ fl.dest_name }}">
-                                    <input type="hidden" name="scheduled_time" value="{{ fl.time }}">
-                                    <input type="hidden" name="status" value="{{ fl.status }}">
-                                    <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-[11px] py-1 px-2.5 rounded-lg transition">
-                                        + Track
-                                    </button>
-                                </form>
-                                {% endif %}
-                                <button type="button" onclick="event.stopPropagation(); openFlightModalFromData(this.closest('tr').dataset.flight)" class="text-sky-600 hover:underline font-semibold text-xs">
-                                    Inspect ↗
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="pt-2 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 border-t border-slate-100">
-                <button type="button" onclick="openAllFlightsModal()" class="hover:text-slate-800 font-semibold inline-flex items-center gap-1">
-                    Displaying 8 most urgent departures · Click to expand full {{ data.all_flights|length }} active flights list →
-                </button>
-                <div class="text-[11px] text-slate-400">
-                    Flight data provided by <a href="https://aerodatabox.com" target="_blank" class="underline hover:text-slate-600">AeroDataBox</a>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-blue-300">
+                        Optional: Discreet Mobile Status Alerts
+                    </h3>
+                    <p class="text-xs text-slate-300 mt-0.5">
+                        Connect our Telegram channel to receive instant, quiet alerts whenever an entity in your portfolio updates their official registry status.
+                    </p>
                 </div>
             </div>
-        </section>
+            <a href="https://t.me/uk_company_radar_bot" target="_blank" class="w-full md:w-auto text-center whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-2 px-5 rounded-xl transition">
+                Connect Telegram Bot →
+            </a>
+        </div>
+        {% endif %}
 
-        <!-- FİYATLANDIRMA TABLOSU -->
+        <!-- FİYATLANDIRMA / 3 KATMANLI PLAN TABLOSU (Aylık & Yıllık Seçenekli) -->
         {% if not is_pro %}
-        <section id="pricing" class="pt-4">
+        <section class="pt-4">
             <div class="text-center max-w-xl mx-auto mb-8 space-y-2">
                 <h3 class="text-xs font-bold tracking-wider uppercase text-blue-600">TRANSPARENT PRICING</h3>
-                <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Protect Your GCC Logistics & Avoid Freight Penalties</h2>
-                <p class="text-xs text-slate-500">Cancel or change plans anytime. Powered by Dodo Payments.</p>
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Peace of Mind for Your Business Accounts</h2>
+                <p class="text-xs text-slate-500">Choose the monitoring capacity that fits your business scale. Modify or cancel your plan anytime.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                
+                <!-- 1. FREE TIER -->
                 <div class="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm">
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-bold text-slate-900">Complimentary Tier</span>
-                            <span class="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Base</span>
+                            <span class="text-sm font-bold text-slate-900">Free Tier</span>
+                            <span class="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Starter</span>
                         </div>
-                        <div class="text-2xl font-extrabold text-slate-900 mb-4">$0 <span class="text-xs font-normal text-slate-500">/ forever</span></div>
+                        <div class="text-2xl font-extrabold text-slate-900 mb-4">£0 <span class="text-xs font-normal text-slate-500">/ forever</span></div>
                         <ul class="text-xs text-slate-600 space-y-2.5 mb-6">
-                            <li class="flex items-center gap-2"><span>✓</span> 5 Monthly Corridor Queries</li>
-                            <li class="flex items-center gap-2"><span>✓</span> Track up to 3 GCC Corridors or Flights</li>
-                            <li class="flex items-center gap-2"><span>✓</span> Real-Time Telegram push alerts</li>
-                            <li class="flex items-center gap-2 text-slate-400"><span>✕</span> Higher query limits</li>
+                            <li class="flex items-center gap-2"><span>✓</span> 3 Daily Registry Searches</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Track up to <b>3 UK entities</b></li>
+                            <li class="flex items-center gap-2"><span>✓</span> Instant Telegram alerts</li>
+                            <li class="flex items-center gap-2 text-slate-400"><span>✕</span> Batch CSV Import</li>
                         </ul>
                     </div>
                     {% if not user %}
@@ -434,71 +347,123 @@
                         </a>
                     {% else %}
                         <div class="w-full text-center bg-slate-50 text-slate-400 font-semibold text-xs py-2.5 rounded-xl border border-slate-200">
-                            Current Active Tier
+                            Current Base Tier
                         </div>
                     {% endif %}
                 </div>
 
-                <div class="bg-white border-2 border-slate-900 rounded-2xl p-6 flex flex-col justify-between shadow-md relative">
-                    <span class="absolute -top-3 right-6 bg-slate-900 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider">
-                        Essential for Air Freight
-                    </span>
+                <!-- 2. PRO PLAN (Aylık / Yıllık) -->
+                <div class="bg-white border border-slate-300 rounded-2xl p-6 flex flex-col justify-between shadow-sm relative">
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm font-bold text-slate-900">Radar Pro</span>
-                            <span class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Full Coverage</span>
+                            <span class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">50 Entities</span>
                         </div>
                         <div class="flex items-baseline gap-2 mb-4">
-                            <span class="text-2xl font-extrabold text-slate-900">$29.90</span>
+                            <span class="text-2xl font-extrabold text-slate-900">£19</span>
                             <span class="text-xs text-slate-500">/ month</span>
                         </div>
                         <ul class="text-xs text-slate-700 space-y-2.5 mb-6 font-medium">
-                            <li class="flex items-center gap-2"><span>✓</span> <b>Up to 200 corridor queries/day</b> & CSV exports</li>
-                            <li class="flex items-center gap-2"><span>✓</span> <b>Track up to 50 routes</b> or individual flights</li>
-                            <li class="flex items-center gap-2"><span>✓</span> 24/7 continuous AeroDataBox engine sync</li>
-                            <li class="flex items-center gap-2"><span>✓</span> Instant state-change Telegram alerts</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Unlimited registry searches</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Track up to <b>50 entities</b></li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>CSV / Excel</b> batch upload</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Hourly background sync</li>
                         </ul>
                     </div>
-
-                    <div class="space-y-2.5 pt-2">
-                        <div class="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-start gap-2">
-                            <svg class="w-4 h-4 text-blue-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <span><strong>Important:</strong> Please ensure your checkout email matches your registered account email for instant activation.</span>
-                        </div>
-
-                        <!-- RENDER ENVIRONMENT DEĞİŞKENLERİNDEN ÇEKİLEN DİNAMİK LİNKLER -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <a href="{{ dodo_monthly_link }}&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
-                                Monthly ($29.90/mo) →
-                            </a>
-                            <a href="{{ dodo_annual_link }}&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
-                                Annual ($249/yr) →
-                            </a>
-                        </div>
+                    <div class="space-y-2">
+                        <a href="{{ pro_monthly_link }}&redirect_url=https://uk-company-radar.onrender.com%2F%3Fpayment%3Dsuccess{% if user %}&customer_email={{ user.email }}{% endif %}" 
+                           target="_blank" 
+                           class="block w-full py-2 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-center text-xs shadow-sm transition-all">
+                            Get Pro Monthly (£19/mo) →
+                        </a>
+                        <a href="{{ pro_annual_link }}&redirect_url=https://uk-company-radar.onrender.com%2F%3Fpayment%3Dsuccess{% if user %}&customer_email={{ user.email }}{% endif %}" 
+                           target="_blank" 
+                           class="block w-full py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl text-center text-xs transition-all">
+                            Get Pro Annual (£190/yr) →
+                        </a>
                     </div>
                 </div>
+
+                <!-- 3. GOLD PLAN (Aylık / Yıllık) -->
+                <div class="bg-white border-2 border-slate-900 rounded-2xl p-6 flex flex-col justify-between shadow-md relative">
+                    <span class="absolute -top-3 right-6 bg-amber-500 text-slate-950 text-[10px] font-extrabold px-3 py-0.5 rounded-full uppercase tracking-wider">
+                        Most Popular for Supply Chains
+                    </span>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-bold text-slate-900">Radar Gold</span>
+                            <span class="text-[11px] font-semibold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">100 Entities</span>
+                        </div>
+                        <div class="flex items-baseline gap-2 mb-4">
+                            <span class="text-2xl font-extrabold text-slate-900">£39</span>
+                            <span class="text-xs text-slate-500">/ month</span>
+                        </div>
+                        <ul class="text-xs text-slate-700 space-y-2.5 mb-6 font-medium">
+                            <li class="flex items-center gap-2"><span>✓</span> Unlimited registry searches</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Track up to <b>100 entities</b> (Max limit)</li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>CSV / Excel</b> batch upload</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Priority real-time alerts & support</li>
+                        </ul>
+                    </div>
+                    <div class="space-y-2">
+                        <a href="{{ gold_monthly_link }}&redirect_url=https://uk-company-radar.onrender.com%2F%3Fpayment%3Dsuccess{% if user %}&customer_email={{ user.email }}{% endif %}" 
+                           target="_blank" 
+                           class="block w-full py-2 px-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-center text-xs shadow-md transition-all">
+                            Get Gold Monthly (£39/mo) →
+                        </a>
+                        <a href="{{ gold_annual_link }}&redirect_url=https://uk-company-radar.onrender.com%2F%3Fpayment%3Dsuccess{% if user %}&customer_email={{ user.email }}{% endif %}" 
+                           target="_blank" 
+                           class="block w-full py-2 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-center text-xs transition-all">
+                            Get Gold Annual (£390/yr) →
+                        </a>
+                    </div>
+                </div>
+
             </div>
         </section>
         {% endif %}
 
+        <!-- SİSTEM GÜVEN VE DEĞER AÇIKLAMALARI -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div class="text-2xl mb-2">⚡</div>
+                <h4 class="font-bold text-sm text-slate-900 mb-1">Live Registry Sync</h4>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    Synchronized with public UK corporate registries. Accurate business intelligence to monitor risk and status changes.
+                </p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div class="text-2xl mb-2">🛡️</div>
+                <h4 class="font-bold text-sm text-slate-900 mb-1">Proactive Partner Health</h4>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    Get alerted when a key client or supplier's public registry record shows an administration, liquidation or strike-off filing.
+                </p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div class="text-2xl mb-2">📲</div>
+                <h4 class="font-bold text-sm text-slate-900 mb-1">Zero-Noise Updates</h4>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    No spam or bloated dashboards. Only receive notifications when a formal status change impacts your monitored list.
+                </p>
+            </div>
+        </section>
+
         <!-- MOBİL ERİŞİM / PWA KURULUM BÖLÜMÜ -->
         <section id="pwa-install-card" class="bg-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-800 text-center space-y-4">
-            <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 text-2xl border border-sky-400/30">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 text-2xl border border-blue-400/30">
                 📲
             </div>
             <div class="max-w-xl mx-auto space-y-2">
                 <h3 class="text-lg sm:text-xl font-bold tracking-tight text-white">
-                    Track GCC Flights On The Go
+                    Track Companies On The Go
                 </h3>
                 <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                    Add Gulf Disruption Radar to your home screen for quick 1-tap access. Runs full-screen directly in your browser with zero App Store downloads or updates.
+                    Add UK Company Radar to your phone's home screen for quick 1-tap access. Runs full-screen directly in your browser with zero App Store downloads or updates.
                 </p>
             </div>
 
             <div>
-                <button id="pwa-install-btn" type="button" class="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold text-xs sm:text-sm py-2.5 px-6 rounded-xl shadow-md transition-all">
+                <button id="pwa-install-btn" type="button" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm py-2.5 px-6 rounded-xl shadow-md transition-all">
                     <span>⚡</span> <span>Add to Home Screen</span>
                 </button>
             </div>
@@ -510,33 +475,228 @@
 
     </main>
 
-    <!-- FOOTER -->
+    <!-- FOOTER & ZORUNLU YASAL FERAGATNAME -->
     <footer class="border-t border-slate-200 bg-white py-6 mt-12 text-xs text-slate-500">
-        <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-                <div>© 2026 Gulf Disruption Radar. Real-time GCC corridor intelligence.</div>
-                <p class="text-[11px] text-slate-400 mt-1">
-                    Flight data provided by <a href="https://aerodatabox.com" target="_blank" class="underline hover:text-slate-600">AeroDataBox</a>. Independent logistics operational tool.
+                <div class="font-semibold text-slate-800">
+                    © 2026 UK Company Radar • Operated by Faktör-H Kalıp Makine San. Tic. Ltd. Şti.
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                    <strong>Notice:</strong> UK Company Radar is an independent business intelligence application providing statutory registry analysis. It does not provide regulated financial or credit broking advice. Not affiliated with or endorsed by Companies House or the UK Government.
                 </p>
             </div>
-            <div class="flex items-center gap-4 flex-shrink-0">
-                <a href="https://t.me/gulf_disruption_radar_bot" target="_blank" class="hover:text-slate-700 transition flex items-center gap-1 font-medium">
-                    <span>🤖</span> Telegram Bot
+            <div class="flex flex-wrap items-center gap-3 text-slate-500 flex-shrink-0">
+                <a href="/legal" target="_blank" class="hover:text-slate-900 underline underline-offset-2">Terms & Privacy</a>
+                <span>•</span>
+                <a href="/legal" target="_blank" class="hover:text-slate-900 underline underline-offset-2">Refund Policy</a>
+                <span>•</span>
+                <a href="https://t.me/uk_company_radar_bot" target="_blank" class="hover:text-slate-900 transition flex items-center gap-1 font-medium">
+                    <span>🤖</span> Bot
                 </a>
-                <span class="text-slate-300">•</span>
-                <button type="button" onclick="openSupportModal()" class="hover:text-slate-700 font-semibold text-slate-600 transition flex items-center gap-1">
-                    <span>🛠️</span> Support Desk
+                <span>•</span>
+                <button type="button" onclick="openSupportModal()" class="hover:text-slate-900 font-medium">
+                    Support
                 </button>
             </div>
         </div>
     </footer>
 
-    <!-- MODAL DOSYASINI DAHİL ET (modals.html) -->
-    {% include "modals.html" %}
+    <!-- CSV UPLOAD MODAL -->
+    <div id="csvModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
+            <button type="button" onclick="closeCsvModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-bold">📥</div>
+                <h3 class="font-bold text-slate-900 text-base">Batch Upload Portfolio (CSV)</h3>
+            </div>
+            
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                Upload a CSV file containing UK company registry numbers (one per row).
+            </p>
 
-    <!-- JAVASCRIPT KONTROLLERİ & PWA SERVICE WORKER -->
+            <div class="space-y-4">
+                <div class="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-slate-400 transition bg-slate-50">
+                    <input type="file" id="csvFileInput" accept=".csv, .txt" class="hidden" onchange="handleCsvFileSelect(event)">
+                    <label for="csvFileInput" class="cursor-pointer space-y-2 block">
+                        <div class="text-2xl">📄</div>
+                        <div id="csvFileName" class="text-xs font-semibold text-slate-700">Click to choose CSV file</div>
+                        <div class="text-[11px] text-slate-400">e.g. 00048839, 06969536, NI732837</div>
+                    </label>
+                </div>
+
+                <!-- CSV / FORMAT REHBERİ BİLGİLENDİRME KUTUSU -->
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-[11px] text-blue-900 space-y-1">
+                    <strong class="font-bold block">📋 CSV File Format Guide:</strong>
+                    <p>Your file must be a <strong>.csv</strong> or <strong>.txt</strong> format. The system reads the <strong>first column</strong> as the UK Company Registration Number (e.g., 8 digits or letters + digits). Company names are automatically fetched from official registries.</p>
+                </div>
+
+                <div id="csvStatusAlert" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeCsvModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">Cancel</button>
+                    <button type="button" id="csvSubmitBtn" onclick="submitCsvUpload()" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2 px-5 rounded-xl shadow-sm transition">Upload & Sync</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DİNAMİK ŞİRKET İSTİHBARAT & RİSK DOSYASI MODAL'I -->
+    <div id="companyModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden my-8 transform transition-all">
+            
+            <div class="bg-slate-900 text-white p-6 flex justify-between items-start">
+                <div>
+                    <div class="flex items-center space-x-3">
+                        <span id="modalStatusBadge" class="text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider bg-emerald-500 text-white">ACTIVE</span>
+                        <span id="modalCompanyNum" class="text-xs text-slate-400 font-mono">00000000</span>
+                    </div>
+                    <h3 id="modalCompanyName" class="text-xl font-bold text-white mt-2">Loading Company...</h3>
+                    <p id="modalAddress" class="text-xs text-slate-300 mt-1">...</p>
+                </div>
+                <button onclick="closeCompanyModal()" class="text-slate-400 hover:text-white text-2xl font-bold leading-none p-1 focus:outline-none">&times;</button>
+            </div>
+
+            <div id="modalLoading" class="p-12 text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
+                <p class="text-sm text-slate-500 mt-3 font-medium">Fetching corporate registry, officers, floating charges & risk evaluation...</p>
+            </div>
+
+            <div id="modalContent" class="hidden p-6 space-y-6 max-h-[75vh] overflow-y-auto text-sm">
+                
+                <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-sm border border-slate-800 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                        <div>
+                            <div class="text-[11px] font-bold uppercase tracking-wider text-blue-400">Automated Solvency & Counterparty Risk</div>
+                            <div class="text-xs font-semibold text-slate-200 mt-0.5">Registry & Statutory Filing Health Score</div>
+                        </div>
+                        <div class="flex items-center gap-3 flex-shrink-0">
+                            <div class="text-right">
+                                <span id="modalRiskScoreText" class="text-2xl font-black text-white">--/100</span>
+                                <span class="block text-[10px] uppercase font-bold text-slate-400">Calculated Score</span>
+                            </div>
+                            <span id="modalRiskBadge" class="px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wide bg-slate-700 text-white">
+                                ANALYZING...
+                            </span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-xs font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
+                            <span>🔍</span> Evaluation Audit Factors (Why this score?):
+                        </div>
+                        <ul id="modalRiskFactors" class="space-y-1.5 text-xs text-slate-300"></ul>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">1. Registry & Filing Deadlines</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div>
+                            <span class="block text-xs text-slate-500">Incorporation</span>
+                            <span id="modalIncDate" class="font-semibold text-slate-800">-</span>
+                        </div>
+                        <div>
+                            <span class="block text-xs text-slate-500">Company Type</span>
+                            <span id="modalType" class="font-semibold text-slate-800 capitalize">-</span>
+                        </div>
+                        <div>
+                            <span class="block text-xs text-slate-500">Next Accounts Due</span>
+                            <span id="modalAccountsDue" class="font-semibold text-slate-800">-</span>
+                        </div>
+                        <div>
+                            <span class="block text-xs text-slate-500">Confirmation Due</span>
+                            <span id="modalConfDue" class="font-semibold text-slate-800">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <span class="block text-xs text-slate-500 mb-1.5 font-medium">Standard Industrial Classification (SIC)</span>
+                    <div id="modalSicCodes" class="flex flex-wrap gap-1.5 text-xs"></div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">2. Mortgages & Floating Charges (Secured Debt)</h4>
+                        <span id="modalChargesCount" class="text-xs px-2.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800">0 Charges</span>
+                    </div>
+                    <div id="modalChargesList" class="space-y-2"></div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">3. Active Directors & Leadership</h4>
+                        <span id="modalDirectorsCount" class="text-[11px] font-semibold text-slate-500"></span>
+                    </div>
+                    <div id="modalOfficersList" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
+                    <div id="modalSecretariesWrapper" class="mt-3 pt-3 border-t border-slate-100 hidden">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Company Secretarial:</span>
+                        <div id="modalSecretariesList" class="text-xs text-slate-600 flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="bg-slate-50 px-6 py-4 border-t border-slate-100 text-xs text-slate-500">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>Source: Public Statutory Records • Data fetched: <strong id="modalFetchTimestamp" class="text-slate-700 font-mono">Just now</strong></span>
+                    </div>
+                    <button type="button" onclick="closeCompanyModal()" class="px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition">
+                        Close
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- DESTEK MASASI MODAL'I -->
+    <div id="supportModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 relative">
+            <button type="button" onclick="closeSupportModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-bold">🛠️</div>
+                <h3 class="font-bold text-slate-900 text-base">Contact Support Desk</h3>
+            </div>
+            
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                Need help with your portfolio alerts, registry data, or subscription? Drop us a message and our team will get back to you shortly.
+            </p>
+
+            <form id="supportForm" onsubmit="submitSupportTicket(event)" class="space-y-3.5">
+                <div id="supportAlert" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+
+                <div>
+                    <label for="supportEmail" class="block text-xs font-semibold text-slate-700 mb-1">Your Email Address *</label>
+                    <input type="email" id="supportEmail" required value="{{ user.email if user else '' }}" placeholder="you@company.com" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label for="supportSubject" class="block text-xs font-semibold text-slate-700 mb-1">Subject *</label>
+                    <input type="text" id="supportSubject" required placeholder="e.g. Alert issue, Portfolio limit, Billing inquiry" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label for="supportMessage" class="block text-xs font-semibold text-slate-700 mb-1">Message Details *</label>
+                    <textarea id="supportMessage" rows="4" required placeholder="Describe your issue or feedback in detail..." class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition resize-none"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeSupportModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">Cancel</button>
+                    <button type="submit" id="supportSubmitBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-2 px-5 rounded-xl shadow-sm transition">Send Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT KODLARI -->
     <script>
-    /* 1. PWA & KURULUM KARTINI OTOMATİK GİZLEME */
+    /* PWA & SERVICE WORKER */
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js').catch((err) => {
@@ -554,21 +714,13 @@
     const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
     if (isStandalone() && pwaCard) {
-        pwaCard.style.display = 'none';
+        pwaCard.classList.add('hidden');
     }
-
-    window.addEventListener('appinstalled', () => {
-        if (pwaCard) {
-            pwaCard.style.display = 'none';
-        }
-    });
 
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        if (installBtn) {
-            installBtn.classList.remove('hidden');
-        }
+        if (installBtn) installBtn.classList.remove('hidden');
     });
 
     if (installBtn) {
@@ -581,144 +733,266 @@
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
                 if (outcome === 'accepted') {
-                    if (pwaCard) pwaCard.style.display = 'none';
+                    installBtn.innerHTML = `<span>✓</span> <span>Added to Home Screen</span>`;
                 }
                 deferredPrompt = null;
             } else if (isIos()) {
-                if (iosNotice) {
-                    iosNotice.classList.toggle('hidden');
-                }
+                if (iosNotice) iosNotice.classList.toggle('hidden');
             } else {
-                alert("To install Gulf Disruption Radar, open your browser menu (⋮ or Share) and select 'Add to Home screen' or 'Install App'.");
+                alert("To add UK Company Radar to your device, use your browser's menu and choose 'Add to Home screen'.");
             }
         });
     }
 
-    /* 2. TÜM UÇUŞLAR MODALI KONTROLLERİ */
-    function openAllFlightsModal() {
-        document.getElementById('allFlightsModal').classList.remove('hidden');
+    /* CSV BATCH UPLOAD MODAL */
+    function openCsvModal() { document.getElementById('csvModal').classList.remove('hidden'); }
+    function closeCsvModal() { document.getElementById('csvModal').classList.add('hidden'); }
+
+    function handleCsvFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) {
+            document.getElementById('csvFileName').innerText = file.name;
+        }
     }
 
-    function closeAllFlightsModal() {
-        document.getElementById('allFlightsModal').classList.add('hidden');
-    }
+    async function submitCsvUpload() {
+        const fileInput = document.getElementById('csvFileInput');
+        const alertBox = document.getElementById('csvStatusAlert');
+        const submitBtn = document.getElementById('csvSubmitBtn');
 
-    function filterModalFlights() {
-        const query = document.getElementById('modalFlightSearch').value.toLowerCase();
-        const rows = document.querySelectorAll('#allFlightsTable .flight-row-item');
-        rows.forEach(row => {
-            const text = row.innerText.toLowerCase();
-            row.style.display = text.includes(query) ? '' : 'none';
-        });
-    }
-
-    /* 3. UÇUŞ DETAY MODALI */
-    function handleRowClick(event, rowElement) {
-        if (event.target.closest('button') || event.target.closest('form')) {
+        if (!fileInput.files.length) {
+            alertBox.className = "p-3 rounded-xl text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200 block";
+            alertBox.innerText = 'Please select a CSV file first.';
             return;
         }
-        try {
-            const flightData = JSON.parse(rowElement.dataset.flight);
-            openFlightModal(flightData);
-        } catch(err) {
-            console.error("Flight data parse error:", err);
-        }
-    }
 
-    function openFlightModalFromData(flightJsonString) {
-        try {
-            const flight = typeof flightJsonString === 'string' ? JSON.parse(flightJsonString) : flightJsonString;
-            openFlightModal(flight);
-        } catch(e) {
-            console.error("Error opening flight modal:", e);
-        }
-    }
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
 
-    function openFlightModal(f) {
-        if (!f) return;
-        document.getElementById('m_flight_num').innerText = (f.flight_num || '') + " — " + (f.airline || '');
-        document.getElementById('m_sub_title').innerText = "DXB to " + (f.dest_name || '') + " (" + (f.dest_iata || '') + ")";
-        document.getElementById('m_callsign').innerText = "Callsign: " + (f.call_sign || 'N/A');
-
-        const badge = document.getElementById('m_status_badge');
-        if (f.status === 'Canceled') {
-            badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-rose-500 text-white";
-            badge.innerText = "CANCELED";
-        } else if (f.status === 'Delayed') {
-            badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-500 text-white";
-            badge.innerText = "DELAYED";
-        } else {
-            badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-500 text-white";
-            badge.innerText = (f.status || 'EXPECTED').toUpperCase();
-        }
-
-        document.getElementById('m_sched_local').innerText = f.time || "-";
-        document.getElementById('m_revised').innerText = f.revised_time || "Zamanında";
-        document.getElementById('m_terminal_gate').innerText = "T" + (f.terminal || 'N/A') + " / G-" + (f.gate || 'Atanmadı');
-        document.getElementById('m_runway').innerText = f.runway || "Atanmadı";
-
-        document.getElementById('m_dest_name').innerText = f.dest_name || "-";
-        document.getElementById('m_codes').innerText = (f.dest_iata || '-') + " / " + (f.dest_icao || '-');
-        document.getElementById('m_coords').innerText = f.coords || "N/A";
-
-        document.getElementById('m_ac_model').innerText = f.aircraft_model || "Belirtilmemiş";
-        document.getElementById('m_ac_reg').innerText = f.aircraft_reg || "N/A";
-        document.getElementById('m_ac_cargo').innerText = f.is_cargo ? "Dedicated Cargo Aircraft" : "Passenger / Belly Cargo";
-
-        document.getElementById('flightModal').classList.remove('hidden');
-    }
-
-    function closeFlightModal() {
-        document.getElementById('flightModal').classList.add('hidden');
-    }
-
-    /* 4. DESTEK MASASI MODALI */
-    function openSupportModal() {
-        document.getElementById('supportModal').classList.remove('hidden');
-    }
-
-    function closeSupportModal() {
-        document.getElementById('supportModal').classList.add('hidden');
-    }
-
-    async function submitSupportTicket(e) {
-        e.preventDefault();
-        const btn = document.getElementById('supportSubmitBtn');
-        const alertBox = document.getElementById('supportAlert');
-        btn.disabled = true;
-        btn.innerText = 'Sending...';
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Processing & Syncing...';
+        alertBox.classList.add('hidden');
 
         try {
-            const res = await fetch('/api/support', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: document.getElementById('supportEmail').value,
-                    message: document.getElementById('supportMessage').value
-                })
-            });
-            if (res.ok) {
+            const res = await fetch('/api/watchlist/upload_csv', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
                 alertBox.className = "p-3 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 block";
-                alertBox.innerText = 'Ticket received successfully.';
-                setTimeout(() => closeSupportModal(), 2000);
+                alertBox.innerText = `Successfully imported ${data.added} companies (${data.skipped} skipped/duplicates). Total tracked: ${data.total_now}/${data.limit}. Reloading...`;
+                setTimeout(() => { window.location.reload(); }, 2000);
+            } else {
+                alertBox.className = "p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200 block";
+                alertBox.innerText = data.detail || 'Upload failed.';
             }
-        } catch(err) {
+        } catch (err) {
             alertBox.className = "p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200 block";
-            alertBox.innerText = 'Could not send message.';
+            alertBox.innerText = 'Network error during upload.';
         } finally {
-            btn.disabled = false;
-            btn.innerText = 'Send Ticket';
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Upload & Sync';
         }
     }
 
-    /* ESC TUŞUYLA KAPATMA */
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closeAllFlightsModal();
-            closeFlightModal();
-            closeSupportModal();
+    /* ŞİRKET DETAY MODAL'I & RİSK DEĞERLEMESİ */
+    async function openCompanyModal(companyNumber) {
+        const modal = document.getElementById('companyModal');
+        const loading = document.getElementById('modalLoading');
+        const content = document.getElementById('modalContent');
+        
+        modal.classList.remove('hidden');
+        loading.classList.remove('hidden');
+        content.classList.add('hidden');
+        
+        document.getElementById('modalCompanyName').innerText = "Loading Company Dossier...";
+        document.getElementById('modalCompanyNum').innerText = companyNumber;
+        
+        try {
+            const res = await fetch(`/api/company/${companyNumber}/details`);
+            if (!res.ok) throw new Error("Could not fetch details");
+            const data = await res.json();
+            
+            const p = data.profile;
+            document.getElementById('modalCompanyName').innerText = p.company_name || 'Unknown Name';
+            document.getElementById('modalCompanyNum').innerText = p.company_number || companyNumber;
+            
+            const addr = p.registered_office_address || {};
+            const fullAddr = [addr.address_line_1, addr.locality, addr.postal_code, addr.country].filter(Boolean).join(', ');
+            document.getElementById('modalAddress').innerText = fullAddr || 'No registered office address listed';
+            
+            const badge = document.getElementById('modalStatusBadge');
+            const st = (p.company_status || 'active').toUpperCase();
+            badge.innerText = st;
+            if (st === 'ACTIVE') {
+                badge.className = "text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider bg-emerald-500 text-white";
+            } else {
+                badge.className = "text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider bg-rose-600 text-white";
+            }
+
+            const now = new Date();
+            const timeString = now.toLocaleDateString('en-GB') + ' ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' UTC';
+            document.getElementById('modalFetchTimestamp').innerText = timeString;
+
+            const risk = data.risk_analysis || {};
+            document.getElementById('modalRiskScoreText').innerText = `${risk.score || 0}/100`;
+
+            const riskBadge = document.getElementById('modalRiskBadge');
+            riskBadge.innerText = risk.level || 'UNKNOWN';
+            if (risk.badge_color === 'emerald') {
+                riskBadge.className = "px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wide bg-emerald-500 text-slate-950";
+            } else if (risk.badge_color === 'amber') {
+                riskBadge.className = "px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wide bg-amber-400 text-slate-950";
+            } else {
+                riskBadge.className = "px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wide bg-rose-600 text-white";
+            }
+
+            const factorsList = document.getElementById('modalRiskFactors');
+            factorsList.innerHTML = '';
+            (risk.factors || []).forEach(f => {
+                let icon = '•';
+                let colorClass = 'text-slate-300';
+                if (f.type === 'positive') { icon = '✓'; colorClass = 'text-emerald-400'; }
+                else if (f.type === 'warning') { icon = '⚠️'; colorClass = 'text-amber-300'; }
+                else if (f.type === 'danger') { icon = '🚨'; colorClass = 'text-rose-400 font-semibold'; }
+                factorsList.innerHTML += `<li class="flex items-start gap-2 ${colorClass}"><span class="mt-0.5">${icon}</span><span>${f.text}</span></li>`;
+            });
+            
+            document.getElementById('modalIncDate').innerText = p.date_of_creation || '-';
+            document.getElementById('modalType').innerText = (p.type || '-').replace(/-/g, ' ');
+            document.getElementById('modalAccountsDue').innerText = p.accounts?.next_due || p.accounts?.next_accounts?.due_on || 'N/A';
+            document.getElementById('modalConfDue').innerText = p.confirmation_statement?.next_due || 'N/A';
+            
+            const sicContainer = document.getElementById('modalSicCodes');
+            sicContainer.innerHTML = '';
+            if (p.sic_codes && p.sic_codes.length > 0) {
+                p.sic_codes.forEach(code => {
+                    sicContainer.innerHTML += `<span class="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded font-mono font-medium">SIC: ${code}</span>`;
+                });
+            } else {
+                sicContainer.innerHTML = '<span class="text-slate-400 italic">No SIC industry codes specified</span>';
+            }
+            
+            const chargesContainer = document.getElementById('modalChargesList');
+            document.getElementById('modalChargesCount').innerText = `${data.total_charges} Registered Charge(s)`;
+            chargesContainer.innerHTML = '';
+            
+            if (data.charges && data.charges.length > 0) {
+                data.charges.forEach(ch => {
+                    const chargeStatus = ch.status === 'outstanding' 
+                        ? '<span class="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">OUTSTANDING</span>' 
+                        : '<span class="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded">SATISFIED</span>';
+                    
+                    chargesContainer.innerHTML += `
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="font-mono text-slate-500">Created: ${ch.created_on || 'N/A'}</span>
+                                <div>${chargeStatus}</div>
+                            </div>
+                            <div class="font-semibold text-slate-800 text-xs mt-1.5">${ch.persons_entitled?.[0]?.name || 'Secured Creditor / Bank'}</div>
+                        </div>
+                    `;
+                });
+            } else {
+                chargesContainer.innerHTML = '<div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-500 italic">No registered mortgages or floating charges found. Clean legal profile.</div>';
+            }
+            
+            const officersContainer = document.getElementById('modalOfficersList');
+            const directorsCount = document.getElementById('modalDirectorsCount');
+            const secWrapper = document.getElementById('modalSecretariesWrapper');
+            const secContainer = document.getElementById('modalSecretariesList');
+            
+            officersContainer.innerHTML = '';
+            secContainer.innerHTML = '';
+            
+            const rawOfficers = data.officers || [];
+            const directors = rawOfficers.filter(o => (o.officer_role || '').toLowerCase().includes('director'));
+            const secretaries = rawOfficers.filter(o => (o.officer_role || '').toLowerCase().includes('secretary'));
+            
+            if (directors.length > 0) {
+                directorsCount.innerText = `${directors.length} Active Director(s)`;
+                directors.forEach(off => {
+                    officersContainer.innerHTML += `
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <span class="text-[10px] uppercase font-bold text-blue-600 block tracking-wider">${off.officer_role || 'Director'}</span>
+                            <span class="font-semibold text-slate-800 text-xs block mt-0.5">${off.name}</span>
+                            <div class="text-[11px] text-slate-500 mt-2 flex justify-between">
+                                <span>Appointed: ${off.appointed_on || '-'}</span>
+                                <span class="capitalize text-slate-600">${off.nationality || ''}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                directorsCount.innerText = '0 Listed';
+                officersContainer.innerHTML = '<div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-500 italic col-span-2">No active director records listed.</div>';
+            }
+
+            if (secretaries.length > 0) {
+                secWrapper.classList.remove('hidden');
+                secretaries.forEach(sec => {
+                    secContainer.innerHTML += `<span class="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] text-slate-700">🖋️ ${sec.name}</span>`;
+                });
+            } else {
+                secWrapper.classList.add('hidden');
+            }
+
+            loading.classList.add('hidden');
+            content.classList.remove('hidden');
+            
+        } catch (err) {
+            loading.innerHTML = `<p class="text-sm text-rose-600 font-medium">Failed to retrieve intelligence: ${err.message}</p>`;
         }
+    }
+
+    function closeCompanyModal() { document.getElementById('companyModal').classList.add('hidden'); }
+
+    /* DESTEK MASASI */
+    function openSupportModal() { document.getElementById('supportModal').classList.remove('hidden'); }
+    function closeSupportModal() { document.getElementById('supportModal').classList.add('hidden'); }
+
+    async function submitSupportTicket(event) {
+        event.preventDefault();
+        const submitBtn = document.getElementById('supportSubmitBtn');
+        const alertBox = document.getElementById('supportAlert');
+        const email = document.getElementById('supportEmail').value.trim();
+        const subject = document.getElementById('supportSubject').value.trim();
+        const message = document.getElementById('supportMessage').value.trim();
+
+        submitBtn.disabled = true;
+        submitBtn.innerText = 'Sending...';
+        alertBox.classList.add('hidden');
+
+        try {
+            const response = await fetch('/api/support', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ email, subject, message })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success) {
+                alertBox.className = "p-3 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 block";
+                alertBox.innerText = 'Your message has been sent successfully. Our team will get back to you shortly.';
+                setTimeout(() => { closeSupportModal(); }, 2000);
+            } else {
+                alertBox.className = "p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200 block";
+                alertBox.innerText = data.detail || 'Request failed';
+            }
+        } catch (err) {
+            alertBox.className = "p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200 block";
+            alertBox.innerText = 'Network error.';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Send Ticket';
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { closeCompanyModal(); closeSupportModal(); closeCsvModal(); }
     });
     </script>
+
+    <!-- Cloudflare Web Analytics -->
+    <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "9ffb911737054635a5e93e0aabec2e25"}'></script>
 </body>
 </html>
