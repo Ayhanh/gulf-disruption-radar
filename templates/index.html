@@ -340,7 +340,7 @@
                 <table class="w-full text-left text-xs border-collapse">
                     <thead>
                         <tr class="border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[11px]">
-                            <th class="py-3 font-semibold">Time</th>
+                            <th class="py-3 font-semibold">Time (GST)</th>
                             <th class="py-3 font-semibold">Flight</th>
                             <th class="py-3 font-semibold">Airline</th>
                             <th class="py-3 font-semibold">Destination</th>
@@ -437,7 +437,7 @@
                             <span class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Full Coverage</span>
                         </div>
                         <div class="flex items-baseline gap-2 mb-4">
-                            <span class="text-2xl font-extrabold text-slate-900">$29.90</span>
+                            <span class="text-2xl font-extrabold text-slate-900">\$29.90</span>
                             <span class="text-xs text-slate-500">/ month</span>
                         </div>
                         <ul class="text-xs text-slate-700 space-y-2.5 mb-6 font-medium">
@@ -458,10 +458,10 @@
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <a href="https://checkout.dodopayments.com/buy/pdt_0NpxnL1dgAueN5DU0DSP1?quantity=1&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
-                                Monthly ($29.90/mo) →
+                                Monthly (\$29.90/mo) →
                             </a>
                             <a href="https://checkout.dodopayments.com/buy/pdt_0NpxnaKcUvNH5vHJo1D8j?quantity=1&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
-                                Annual ($249/yr) →
+                                Annual (\$249/yr) →
                             </a>
                         </div>
                     </div>
@@ -540,12 +540,10 @@
     const isIos = () => /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
     const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
-    // EĞER ZATEN MASAÜSTÜNE / ANA EKRANA KURULMUŞSA KARTI DİREKT GİZLE
     if (isStandalone() && pwaCard) {
         pwaCard.style.display = 'none';
     }
 
-    // Yükleme başarılı olduğu anda kartı tamamen sayfadan kaldır
     window.addEventListener('appinstalled', () => {
         if (pwaCard) {
             pwaCard.style.display = 'none';
@@ -627,7 +625,7 @@
         if (!f) return;
         document.getElementById('m_flight_num').innerText = (f.flight_num || '') + " — " + (f.airline || '');
         document.getElementById('m_sub_title').innerText = "DXB to " + (f.dest_name || '') + " (" + (f.dest_iata || '') + ")";
-        document.getElementById('m_callsign').innerText = "Callsign: " + (f.call_sign || '-');
+        document.getElementById('m_callsign').innerText = "Callsign: " + (f.call_sign || 'N/A');
 
         const badge = document.getElementById('m_status_badge');
         if (f.status === 'Canceled') {
@@ -642,16 +640,16 @@
         }
 
         document.getElementById('m_sched_local').innerText = f.time || "-";
-        document.getElementById('m_revised').innerText = f.revised_time ? f.revised_time.split("T").pop().substring(0,5) : "-";
-        document.getElementById('m_terminal_gate').innerText = "T" + (f.terminal || '-') + " / G-" + (f.gate || '-');
-        document.getElementById('m_runway').innerText = f.runway || "-";
+        document.getElementById('m_revised').innerText = f.revised_time || "Zamanında";
+        document.getElementById('m_terminal_gate').innerText = "T" + (f.terminal || 'N/A') + " / G-" + (f.gate || 'Atanmadı');
+        document.getElementById('m_runway').innerText = f.runway || "Atanmadı";
 
         document.getElementById('m_dest_name').innerText = f.dest_name || "-";
         document.getElementById('m_codes').innerText = (f.dest_iata || '-') + " / " + (f.dest_icao || '-');
-        document.getElementById('m_coords').innerText = f.coords || "-";
+        document.getElementById('m_coords').innerText = f.coords || "N/A";
 
-        document.getElementById('m_ac_model').innerText = f.aircraft_model || "-";
-        document.getElementById('m_ac_reg').innerText = f.aircraft_reg || "-";
+        document.getElementById('m_ac_model').innerText = f.aircraft_model || "Belirtilmemiş";
+        document.getElementById('m_ac_reg').innerText = f.aircraft_reg || "N/A";
         document.getElementById('m_ac_cargo').innerText = f.is_cargo ? "Dedicated Cargo Aircraft" : "Passenger / Belly Cargo";
 
         document.getElementById('flightModal').classList.remove('hidden');
