@@ -1,6 +1,6 @@
 import asyncio
 import csv
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timezone
 import hashlib
 import hmac
 import io
@@ -29,13 +29,14 @@ load_dotenv(BASE_DIR / ".env")
 DB_FILE = BASE_DIR / "flights.db"
 DATA_CACHE_FILE = BASE_DIR / "rapidapi_API.txt"
 
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "f55883fadamsh9cac998915d9bd9p1629b7jsn791c470d22df").strip()
+# Çevresel değişkenlerden hassas anahtarları çekiyoruz (Kod içinde hardcoded anahtar bırakılmadı)
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "").strip()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 DEBUG_MODE = os.getenv("DEBUG", "true").strip().lower() in {"1", "true", "yes", "on"}
 DODO_WEBHOOK_SECRET = os.getenv("DODO_WEBHOOK_SECRET", "").strip()
-ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").strip().lower()]
+ADMIN_EMAILS = [email.strip().lower() for email in os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").split(",") if email.strip()]
 
 app = FastAPI(title="Gulf Disruption Radar")
 
@@ -76,14 +77,14 @@ def init_db():
                 password_hash TEXT NOT NULL,
                 telegram_chat_id TEXT,
                 is_pro INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS watchlist (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 route_code TEXT NOT NULL,
                 destination_name TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, route_code)
             );
             CREATE TABLE IF NOT EXISTS tracked_flights (
@@ -94,7 +95,7 @@ def init_db():
                 destination_name TEXT NOT NULL,
                 scheduled_time TEXT,
                 last_status TEXT NOT NULL DEFAULT 'Expected',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, flight_num)
             );
             CREATE TABLE IF NOT EXISTS search_logs (
@@ -107,7 +108,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS sessions (
                 session_id TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
         """)
     else:
@@ -199,7 +200,7 @@ async def send_telegram(chat_id: str, message: str):
     await asyncio.to_thread(_send_telegram_worker, chat_id, message)
 
 # ---------------------------------------------------------
-# KULLANICI VE KOTA KONTROLLERİ
+# KULLANICI VE KOTA KONTROLLERİ (UTC TARIH YÖNETIMI)
 # ---------------------------------------------------------
 def is_valid_telegram_chat_id(chat_id: str) -> bool:
     return bool(re.fullmatch(r"-?\d{6,20}", str(chat_id).strip())) if chat_id else False
@@ -231,18 +232,22 @@ def get_current_user(request: Request):
         user_dict["is_admin"] = False
     return user_dict
 
+def get_today_utc_str() -> str:
+    """Tarih sorgularını UTC standart zaman dilimine sabitler."""
+    return datetime.now(timezone.utc).date().isoformat()
+
 def get_search_count(identifier: str) -> int:
-    today = date.today().isoformat()
+    today_utc = get_today_utc_str()
     conn = get_db()
     cursor = conn.cursor()
     query = format_query("SELECT count FROM search_logs WHERE identifier = ? AND search_date = ?")
-    cursor.execute(query, (identifier, today))
+    cursor.execute(query, (identifier, today_utc))
     row = cursor.fetchone()
     conn.close()
     return row["count"] if row else 0
 
 def increment_search_count(identifier: str):
-    today = date.today().isoformat()
+    today_utc = get_today_utc_str()
     conn = get_db()
     cursor = conn.cursor()
     query = format_query("""
@@ -250,7 +255,7 @@ def increment_search_count(identifier: str):
         VALUES (?, ?, 1)
         ON CONFLICT(identifier, search_date) DO UPDATE SET count = search_logs.count + 1
     """)
-    cursor.execute(query, (identifier, today))
+    cursor.execute(query, (identifier, today_utc))
     conn.commit()
     conn.close()
 
@@ -258,6 +263,9 @@ def increment_search_count(identifier: str):
 # CANLI HAVALİMANI & FIDS MOTORU
 # ---------------------------------------------------------
 def fetch_live_airport_data(iata_code="DXB"):
+    if not RAPIDAPI_KEY:
+        return False, "RAPIDAPI_KEY çevresel değişkeni tanımlanmamış."
+
     url = f"https://aerodatabox.p.rapidapi.com/flights/airports/iata/{iata_code}"
     headers = {"X-RapidAPI-Key": RAPIDAPI_KEY, "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com"}
     params = {
@@ -302,31 +310,34 @@ def parse_radar_data(search_query=""):
         status = f.get("status", "Expected")
         airline = f.get("airline", {}).get("name", "Bilinmeyen Havayolu")
         flight_num = f.get("number", "N/A")
-        call_sign = f.get("callSign", "-")
+        call_sign = f.get("callSign") or "N/A"
         is_cargo = f.get("isCargo", False)
 
         arr_info = f.get("arrival", {})
         dest_name = arr_info.get("airport", {}).get("name", "Bilinmiyor")
         dest_iata = arr_info.get("airport", {}).get("iata", "N/A")
         dest_icao = arr_info.get("airport", {}).get("icao", "N/A")
-        dest_country = arr_info.get("airport", {}).get("countryCode", "-").upper()
+        dest_country = (arr_info.get("airport", {}).get("countryCode") or "-").upper()
         dest_tz = arr_info.get("airport", {}).get("timeZone", "-")
         loc = arr_info.get("airport", {}).get("location", {})
-        coords = f"{loc.get('lat', '-')}, {loc.get('lon', '-')}" if loc else "-"
+        
+        lat = loc.get('lat') if loc else None
+        lon = loc.get('lon') if loc else None
+        coords = f"{lat}, {lon}" if lat is not None and lon is not None else "N/A"
 
         dep_info = f.get("departure", {})
         sched_time_raw = dep_info.get("scheduledTime", {}).get("local", "-")
         sched_time_utc = dep_info.get("scheduledTime", {}).get("utc", "-")
-        revised_time = dep_info.get("revisedTime", {}).get("local", "-")
-        runway_time = dep_info.get("runwayTime", {}).get("local", "-")
-        terminal = dep_info.get("terminal", "-")
-        gate = dep_info.get("gate", "-")
-        runway = dep_info.get("runway", "-")
+        revised_time = dep_info.get("revisedTime", {}).get("local") or "Zamanında"
+        runway_time = dep_info.get("runwayTime", {}).get("local") or "Atanmadı"
+        terminal = dep_info.get("terminal") or "N/A"
+        gate = dep_info.get("gate") or "Atanmadı"
+        runway = dep_info.get("runway") or "Atanmadı"
 
         ac = f.get("aircraft", {})
-        ac_model = ac.get("model", "Belirtilmemiş")
-        ac_reg = ac.get("reg", "-")
-        ac_modes = ac.get("modeS", "-")
+        ac_model = ac.get("model") or "Belirtilmemiş"
+        ac_reg = ac.get("reg") or "N/A"
+        ac_modes = ac.get("modeS") or "N/A"
 
         sched_display = sched_time_raw.split("T")[-1][:5] if "T" in sched_time_raw else (sched_time_raw[-11:-6] if len(sched_time_raw) >= 11 else sched_time_raw)
 
@@ -383,7 +394,6 @@ def parse_radar_data(search_query=""):
 
     critical_routes = sorted(critical_routes, key=lambda x: x["canceled"], reverse=True)
 
-    # 35 uçuşluk sınır ve ana sayfada kompakt 8 uçuş
     sliced_flights = all_flights[:35]
     top_8_flights = sliced_flights[:8]
 
@@ -409,7 +419,7 @@ async def automated_radar_monitor():
             conn = get_db()
             cursor = conn.cursor()
 
-            # 1. Tekil Uçuş Takibi (State-Change Alert)
+            # 1. Tekil Uçuş Takibi
             cursor.execute("""
                 SELECT tf.id, tf.user_id, tf.flight_num, tf.airline, tf.destination_name, tf.last_status, u.telegram_chat_id
                 FROM tracked_flights tf
@@ -425,7 +435,6 @@ async def automated_radar_monitor():
                 if f_num in current_flight_map:
                     new_status = current_flight_map[f_num]["status"]
 
-                    # Durum değiştiyse ve Canceled veya Delayed olduysa bildir
                     if new_status != old_status:
                         cursor.execute(format_query("UPDATE tracked_flights SET last_status = ? WHERE id = ?"), (new_status, tf["id"]))
                         conn.commit()
@@ -477,14 +486,40 @@ async def startup_event():
     asyncio.create_task(automated_radar_monitor())
 
 # ---------------------------------------------------------
-# DODO PAYMENTS WEBHOOK
+# DODO PAYMENTS WEBHOOK (GÜVENLİK & IMZA DOĞRULAMA EKLENDİ)
 # ---------------------------------------------------------
+def verify_dodo_signature(payload_bytes: bytes, headers: dict) -> bool:
+    """Dodo Payments Webhook Doğrulaması (Standard Webhook / HMAC)"""
+    if not DODO_WEBHOOK_SECRET:
+        # Secret henüz girilmediyse geliştirme ortamı hariç reddet
+        return DEBUG_MODE
+
+    msg_id = headers.get("webhook-id") or headers.get("x-webhook-id") or ""
+    msg_timestamp = headers.get("webhook-timestamp") or headers.get("x-webhook-timestamp") or ""
+    msg_signature = headers.get("webhook-signature") or headers.get("x-webhook-signature") or ""
+
+    if not msg_signature:
+        return False
+
+    to_sign = f"{msg_id}.{msg_timestamp}.".encode("utf-8") + payload_bytes
+    expected_sig = hmac.new(DODO_WEBHOOK_SECRET.encode("utf-8"), to_sign, hashlib.sha256).hexdigest()
+    
+    # Signatures header v1,v2 şeklinde gelebileceği için içinde arıyoruz
+    return hmac.compare_digest(expected_sig, msg_signature) or expected_sig in msg_signature
+
 @app.post("/api/dodo-webhook")
 async def dodo_webhook(request: Request):
+    raw_body = await request.body()
+    headers = dict(request.headers)
+
+    # İsteğin Dodo'dan gelip gelmediğinin kontrolü
+    if DODO_WEBHOOK_SECRET and not verify_dodo_signature(raw_body, headers):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
     try:
-        payload = await request.json()
+        payload = json.loads(raw_body.decode("utf-8"))
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid payload")
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
     event_type = payload.get("type") or payload.get("event")
     event_data = payload.get("data", {})
@@ -545,7 +580,7 @@ async def export_csv(request: Request):
     radar = parse_radar_data()
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Time", "Flight Number", "Airline", "Destination", "IATA", "Terminal", "Gate", "Status", "Aircraft Model"])
+    writer.writerow(["Time (GST)", "Flight Number", "Airline", "Destination", "IATA", "Terminal", "Gate", "Status", "Aircraft Model"])
 
     for fl in radar["all_flights"]:
         writer.writerow([
@@ -554,7 +589,8 @@ async def export_csv(request: Request):
         ])
 
     output.seek(0)
-    filename = f"Gulf_Disruption_Report_{date.today().isoformat()}.csv"
+    today_utc = get_today_utc_str()
+    filename = f"Gulf_Disruption_Report_{today_utc}.csv"
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
@@ -562,7 +598,7 @@ async def export_csv(request: Request):
     )
 
 # ---------------------------------------------------------
-# PWA (PROGRESSIVE WEB APP) ENDPOINT'LERİ (YENİ)
+# PWA (PROGRESSIVE WEB APP) ENDPOINT'LERİ
 # ---------------------------------------------------------
 @app.get("/manifest.json")
 async def get_manifest():
