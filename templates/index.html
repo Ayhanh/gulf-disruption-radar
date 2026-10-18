@@ -456,11 +456,12 @@
                             <span><strong>Important:</strong> Please ensure your checkout email matches your registered account email for instant activation.</span>
                         </div>
 
+                        <!-- RENDER ENVIRONMENT DEĞİŞKENLERİNDEN ÇEKİLEN DİNAMİK LİNKLER -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <a href="https://checkout.dodopayments.com/buy/pdt_0NpxnL1dgAueN5DU0DSP1?quantity=1&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
+                            <a href="{{ dodo_monthly_link }}&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
                                 Monthly (\$29.90/mo) →
                             </a>
-                            <a href="https://checkout.dodopayments.com/buy/pdt_0NpxnaKcUvNH5vHJo1D8j?quantity=1&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
+                            <a href="{{ dodo_annual_link }}&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
                                 Annual (\$249/yr) →
                             </a>
                         </div>

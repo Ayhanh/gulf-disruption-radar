@@ -29,13 +29,18 @@ load_dotenv(BASE_DIR / ".env")
 DB_FILE = BASE_DIR / "flights.db"
 DATA_CACHE_FILE = BASE_DIR / "rapidapi_API.txt"
 
-# Çevresel değişkenlerden hassas anahtarları çekiyoruz (Kod içinde hardcoded anahtar bırakılmadı)
+# Çevresel değişkenlerden hassas anahtarları ve dinamik ödeme linklerini çekiyoruz
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "").strip()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 DEBUG_MODE = os.getenv("DEBUG", "true").strip().lower() in {"1", "true", "yes", "on"}
 DODO_WEBHOOK_SECRET = os.getenv("DODO_WEBHOOK_SECRET", "").strip()
+
+# Render Environment Variables uzerinden dinamik ödeme linkleri
+DODO_MONTHLY_LINK = os.getenv("Radar_Pro_Monthly", "").strip()
+DODO_ANNUAL_LINK = os.getenv("Radar_Pro_Annual", "").strip()
+
 ADMIN_EMAILS = [email.strip().lower() for email in os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").split(",") if email.strip()]
 
 app = FastAPI(title="Gulf Disruption Radar")
@@ -491,7 +496,6 @@ async def startup_event():
 def verify_dodo_signature(payload_bytes: bytes, headers: dict) -> bool:
     """Dodo Payments Webhook Doğrulaması (Standard Webhook / HMAC)"""
     if not DODO_WEBHOOK_SECRET:
-        # Secret henüz girilmediyse geliştirme ortamı hariç reddet
         return DEBUG_MODE
 
     msg_id = headers.get("webhook-id") or headers.get("x-webhook-id") or ""
@@ -504,7 +508,6 @@ def verify_dodo_signature(payload_bytes: bytes, headers: dict) -> bool:
     to_sign = f"{msg_id}.{msg_timestamp}.".encode("utf-8") + payload_bytes
     expected_sig = hmac.new(DODO_WEBHOOK_SECRET.encode("utf-8"), to_sign, hashlib.sha256).hexdigest()
     
-    # Signatures header v1,v2 şeklinde gelebileceği için içinde arıyoruz
     return hmac.compare_digest(expected_sig, msg_signature) or expected_sig in msg_signature
 
 @app.post("/api/dodo-webhook")
@@ -512,7 +515,6 @@ async def dodo_webhook(request: Request):
     raw_body = await request.body()
     headers = dict(request.headers)
 
-    # İsteğin Dodo'dan gelip gelmediğinin kontrolü
     if DODO_WEBHOOK_SECRET and not verify_dodo_signature(raw_body, headers):
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
@@ -673,6 +675,8 @@ async def index(request: Request, q: Optional[str] = None):
             "remaining_searches": remaining_searches,
             "watchlist_limit_reached": watchlist_limit_reached,
             "is_pro": is_pro,
+            "dodo_monthly_link": DODO_MONTHLY_LINK,
+            "dodo_annual_link": DODO_ANNUAL_LINK,
         }
     )
 
