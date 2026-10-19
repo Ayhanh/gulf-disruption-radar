@@ -126,8 +126,8 @@
                 <h2 class="text-xs font-bold tracking-wider uppercase text-slate-500">LOOK UP AIR ROUTE OR FLIGHT</h2>
                 <div class="flex items-center gap-2">
                     {% if is_pro %}
-                    <a href="/export-csv" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
-                        <span>📥</span> Export CSV
+                    <a href="/export-pdf" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                        <span>📥</span> Export
                     </a>
                     {% endif %}
                     <span class="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold {{ 'bg-amber-100 text-amber-800' if search_limit_reached else 'bg-slate-100 text-slate-700' }}">
