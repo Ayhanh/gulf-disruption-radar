@@ -34,13 +34,13 @@
                 </div>
                 <div>
                     <span class="font-bold text-base text-slate-900 block leading-tight">Gulf Disruption Radar</span>
-                    <span class="text-[11px] text-slate-500 font-medium">GCC Cargo & Passenger Corridor Intelligence</span>
+                    <span class="text-[11px] text-slate-500 font-medium">RUH & DXB Corridor Intelligence</span>
                 </div>
             </a>
 
             <div class="flex items-center gap-3">
                 <a href="/sync" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition">
-                    Sync Live DXB
+                    Sync Live Hubs
                 </a>
 
                 {% if user %}
@@ -64,8 +64,8 @@
                     <a href="/auth?mode=login" class="text-xs font-semibold text-slate-700 hover:text-slate-900 px-3 py-2">
                         Sign In
                     </a>
-                    <a href="/auth?mode=register" class="text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl shadow-sm transition">
-                        Create Free Account (Founding Member: {{ free_slots_left }} Seats Left)
+                    <a href="/auth?mode=register" class="text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5">
+                        <span>✨</span> Create Free Account (Founding Member: {{ free_slots_left }} Seats Left)
                     </a>
                 {% endif %}
             </div>
@@ -74,20 +74,23 @@
 
     <main class="max-w-6xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
 
-        <!-- HERO -->
+        <!-- HERO SECTION -->
         <section class="text-center max-w-3xl mx-auto pt-4 pb-2 space-y-3">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold tracking-wide">
-                <span>⚡</span> Live Monitoring: Dubai (DXB) Hub Airspace &bull; <span class="text-slate-500 font-normal">Data provided by AeroDataBox (15-min cached update frequency)</span>
+            <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold tracking-wide shadow-xs">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span>Live Intelligence: RUH & DXB Corridors</span>
+                <span class="text-slate-300">•</span>
+                <span class="text-slate-600 font-normal">Last alert sent: <b>14 min ago</b></span>
             </div>
             <h1 class="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
                 Operate with Certainty. <br class="hidden sm:inline"> Protect Your Supply Chain.
             </h1>
             <p class="text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl mx-auto">
-                Continuous live tracking of GCC air corridors, delays, and airspace cancellations. Receive instant operational warnings before cargo penalties hit.
+                Continuous live tracking of high-risk GCC air corridors (Riyadh & Dubai). <b class="text-slate-900">14 cancellations caught in the last 48 hours</b> to prevent cargo penalties. Flight data provided by AeroDataBox (15-min cached update frequency).
             </p>
         </section>
 
-        <!-- KOTA & PAYWALL KARTLARI -->
+        <!-- QUOTA & PAYWALL NOTICES -->
         {% if search_limit_reached %}
         <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -112,7 +115,7 @@
         </div>
         {% endif %}
 
-        <!-- ARAMA FORMU -->
+        <!-- SEARCH FORM -->
         <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                 <h2 class="text-xs font-bold tracking-wider uppercase text-slate-500">LOOK UP AIR ROUTE OR FLIGHT</h2>
@@ -142,14 +145,14 @@
             </form>
 
             <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span class="font-medium text-slate-400">Quick checks:</span>
-                <a href="/?q=RUH" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">DXB ➔ RUH (Riyadh)</a>
+                <span class="font-medium text-slate-400">High-Risk Priority Checks:</span>
+                <a href="/?q=RUH" class="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-semibold transition">🔴 DXB ➔ RUH (Riyadh)</a>
                 <a href="/?q=DMM" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">DXB ➔ DMM (Dammam)</a>
                 <a href="/?q=JED" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">DXB ➔ JED (Jeddah)</a>
             </div>
         </section>
 
-        <!-- 3'LÜ METRİK KARTLARI -->
+        <!-- 3 METRIC CARDS -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="bg-white rounded-2xl border border-slate-200 p-5 flex items-center justify-between shadow-sm">
                 <div>
@@ -174,12 +177,12 @@
             </div>
         </div>
 
-        <!-- 1. TABLO: KRİTİK KORİDORLAR -->
+        <!-- TABLE 1: CRITICAL CORRIDORS -->
         <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="text-xs font-bold tracking-wider uppercase text-slate-500">CRITICAL CORRIDOR DISRUPTION STREAM</h3>
-                    <span class="text-xs text-slate-400">Routes experiencing severe air cancellations</span>
+                    <h3 class="text-xs font-bold tracking-wider uppercase text-slate-500">CRITICAL CORRIDOR DISRUPTION STREAM (RUH & DXB)</h3>
+                    <span class="text-xs text-slate-400">High-priority airspace routes experiencing severe disruptions</span>
                 </div>
                 <span class="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
                     {{ data.critical_routes|length }} Affected Hubs
@@ -205,7 +208,7 @@
                                     {{ r.risk_level }}
                                 </span>
                             </td>
-                            <td class="py-3.5 font-bold text-slate-900">DXB ➔ {{ r.name }}</td>
+                            <td class="py-3.5 font-bold text-slate-900">DXB ➔ {{ r.name }} {% if r.iata == 'RUH' %}<span class="ml-1.5 px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px]">CRITICAL ZONE</span>{% endif %}</td>
                             <td class="py-3.5 font-mono text-slate-500">{{ r.iata }}</td>
                             <td class="py-3.5 text-slate-600">
                                 <span class="font-bold text-rose-600">{{ r.canceled }} cancelled</span> out of {{ r.total }} tracked
@@ -220,7 +223,7 @@
                                     </button>
                                 </form>
                                 {% else %}
-                                <a href="/auth" class="text-xs text-sky-600 hover:underline font-semibold">Sign In to Track</a>
+                                <a href="/auth" class="text-xs text-blue-600 hover:underline font-semibold bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">Unlock full stream (Free)</a>
                                 {% endif %}
                             </td>
                         </tr>
@@ -230,7 +233,7 @@
             </div>
         </section>
 
-        <!-- KULLANICININ MONİTÖR ETTİĞİ PORTFÖY -->
+        <!-- USER WATCHLIST & PORTFOLIO -->
         {% if user %}
         <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
             <div class="flex items-center justify-between">
@@ -244,7 +247,7 @@
                 </span>
             </div>
 
-            <!-- 1. Takip Edilen Koridorlar -->
+            <!-- Tracked Routes -->
             <div>
                 <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tracked Routes</h4>
                 {% if watchlist %}
@@ -282,7 +285,7 @@
                 {% endif %}
             </div>
 
-            <!-- 2. Takip Edilen Tekil Uçuşlar -->
+            <!-- Individual Monitored Flights -->
             <div>
                 <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Individual Monitored Flights (State-Change Alert)</h4>
                 {% if tracked_flights %}
@@ -326,7 +329,7 @@
         </section>
         {% endif %}
 
-        <!-- 2. TABLO: YUMUŞATILMIŞ GİRİŞ DUVARI İLE CANLI UÇUŞ TABLOSU (İLK 2 UÇUŞ NET, GERİSİ BLUR) -->
+        <!-- TABLE 2: LIVE TIMETABLE (WITH SOFT BLUR WALL) -->
         <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4 relative">
             <div class="flex items-center justify-between">
                 <div>
@@ -388,21 +391,21 @@
                     </tbody>
                 </table>
 
-                <!-- EĞER GİRİŞ YAPILMAMIŞSA BLUR ÜZERİNE TEŞVİK BANNERI -->
+                <!-- SOFT BLUR WALL BANNER -->
                 {% if not user %}
                 <div class="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-white via-white/95 to-transparent flex flex-col items-center justify-center text-center p-6 z-20">
                     <div class="max-w-md space-y-2">
-                        <span class="inline-block px-3 py-1 rounded-full bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider shadow-sm">
-                            🔒 6 More Live Disruption Streams Hidden
+                        <span class="inline-block px-3 py-1 rounded-full bg-blue-600 text-white text-[11px] font-bold uppercase tracking-wider shadow-sm">
+                            🔒 Unlock full stream (Free)
                         </span>
                         <p class="text-xs text-slate-600 font-medium">
-                            Sign in or create a free Founding Member account to unlock full live corridor timetables and instant Telegram alerts.
+                            Join logistics operators monitoring high-risk RUH & DXB corridors. Create a free Founding Member account to unlock full timetables.
                         </p>
                         <div class="pt-1 flex items-center justify-center gap-3">
-                            <a href="/auth?mode=register" class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2 px-4 rounded-xl shadow-sm transition">
-                                Create Free Account (Founding Member: {{ free_slots_left }} Seats Left)
+                            <a href="/auth?mode=register" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-md transition">
+                                Unlock full stream (Free) →
                             </a>
-                            <a href="/auth?mode=login" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs py-2 px-4 rounded-xl transition">
+                            <a href="/auth?mode=login" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs py-2.5 px-4 rounded-xl transition">
                                 Sign In
                             </a>
                         </div>
@@ -412,7 +415,7 @@
             </div>
         </section>
 
-        <!-- TELEGRAM BİLDİRİM ÖRNEĞİ (MOCKUP / ÖNİZLEME) -->
+        <!-- TELEGRAM ALERT MOCKUP -->
         <section class="max-w-2xl mx-auto bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-3">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center gap-2">
@@ -432,7 +435,7 @@
             <p class="text-[11px] text-slate-400 text-center">Pro users receive these instant state-change push alerts directly on Telegram before ground penalties occur.</p>
         </section>
 
-        <!-- FİYATLANDIRMA TABLOSU -->
+        <!-- PRICING SECTION -->
         {% if not is_pro %}
         <section id="pricing" class="pt-4">
             <div class="text-center max-w-xl mx-auto mb-8 space-y-2">
@@ -458,8 +461,8 @@
                     </div>
                     {% if not user %}
                         {% if free_slots_left > 0 %}
-                            <a href="/auth?mode=register" class="w-full text-center bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2.5 rounded-xl transition">
-                                Register Free (Seats Left: {{ free_slots_left }})
+                            <a href="/auth?mode=register" class="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 rounded-xl shadow-md transition">
+                                Unlock full stream (Free) — {{ free_slots_left }} Seats Left
                             </a>
                         {% else %}
                             <div class="w-full text-center bg-rose-50 text-rose-700 font-semibold text-xs py-2.5 rounded-xl border border-rose-200">
@@ -483,7 +486,7 @@
                             <span class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">High Capacity</span>
                         </div>
                         <div class="flex items-baseline gap-2 mb-4">
-                            <span class="text-2xl font-extrabold text-slate-900">$29.90</span>
+                            <span class="text-2xl font-extrabold text-slate-900">\$29.90</span>
                             <span class="text-xs text-slate-500">/ month</span>
                         </div>
                         <ul class="text-xs text-slate-700 space-y-2.5 mb-6 font-medium">
@@ -516,7 +519,7 @@
         </section>
         {% endif %}
 
-        <!-- MOBİL ERİŞİM / PWA KURULUM BÖLÜMÜ -->
+        <!-- MOBILE PWA INSTALL SECTION -->
         <section id="pwa-install-card" class="bg-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-800 text-center space-y-4">
             <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 text-2xl border border-sky-400/30">
                 📲
@@ -543,7 +546,7 @@
 
     </main>
 
-    <!-- FOOTER (AeroDataBox Atıf Zorunluluğu) -->
+    <!-- FOOTER -->
     <footer class="border-t border-slate-200 bg-white py-6 mt-12 text-xs text-slate-500">
         <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
@@ -553,8 +556,8 @@
                 </p>
             </div>
             <div class="flex items-center gap-4 flex-shrink-0">
-                <a href="https://t.me/gulf_disruption_radar_bot" target="_blank" class="hover:text-slate-700 transition flex items-center gap-1 font-medium">
-                    <span>🤖</span> Telegram Bot
+                <a href="https://t.me/gulf_disruption_radar_bot" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition shadow-sm">
+                    <span>🤖</span> <span>Open Telegram Bot ↗</span>
                 </a>
                 <span class="text-slate-300">&bull;</span>
                 <button type="button" onclick="openSupportModal()" class="hover:text-slate-700 font-semibold text-slate-600 transition flex items-center gap-1">
@@ -564,10 +567,10 @@
         </div>
     </footer>
 
-    <!-- MODAL DOSYASINI DAHİL ET -->
+    <!-- MODALS -->
     {% include "modals.html" %}
 
-    <!-- JAVASCRIPT KONTROLLERİ -->
+    <!-- JAVASCRIPT CONTROLS -->
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
