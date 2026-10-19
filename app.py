@@ -22,6 +22,11 @@ from fastapi.templating import Jinja2Templates
 import requests
 import sqlite3
 
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+
 # ---------------------------------------------------------
 # KONFİGÜRASYON & SABİT DEĞİŞKENLER
 # ---------------------------------------------------------
@@ -691,7 +696,7 @@ async def dodo_webhook(request: Request):
                 "Your account is upgraded to <b>PRO</b>.\n"
                 "• Up to 100 corridor queries / day\n"
                 "• Up to 50 tracked routes & individual flights\n"
-                "• Instant state-change push alerts & CSV exports"
+                "• Instant state-change push alerts & PDF reports"
             )
             await send_telegram(user_row["telegram_chat_id"], pro_msg)
 
@@ -930,10 +935,10 @@ async def admin_panel(request: Request):
     return HTMLResponse(content=html_content)
 
 # ---------------------------------------------------------
-# CSV RAPOR DIŞA AKTARMA (PRO)
+# PDF RAPOR DIŞA AKTARMA (PRO) - BLOOMBERG TERMINAL STİLİ
 # ---------------------------------------------------------
-@app.get("/export-csv")
-async def export_csv(request: Request):
+@app.get("/export-pdf")
+async def export_pdf(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/auth?mode=login", status_code=303)
@@ -942,21 +947,180 @@ async def export_csv(request: Request):
         return RedirectResponse(url="/?limit_reached=1", status_code=303)
 
     radar = parse_radar_data()
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["Time", "Flight Number", "Airline", "Destination", "IATA", "Terminal", "Gate", "Status", "Aircraft Model"])
+    
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=36, leftMargin=36,
+        topMargin=36, bottomMargin=36
+    )
+    
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    primary_color = colors.HexColor("#0f172a") # Slate 950
+    accent_color = colors.HexColor("#0284c7")  # Sky 600
+    text_color = colors.HexColor("#334155")    # Slate 700
+    
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        textColor=primary_color,
+        spaceAfter=4
+    )
+    
+    meta_style = ParagraphStyle(
+        'DocMeta',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8,
+        textColor=colors.HexColor("#64748b"),
+        alignment=2
+    )
+    
+    section_heading = ParagraphStyle(
+        'SectionHeading',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=11,
+        textColor=primary_color,
+        spaceBefore=12,
+        spaceAfter=6
+    )
+    
+    body_style = ParagraphStyle(
+        'BodyDark',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        textColor=text_color,
+        spaceAfter=6
+    )
 
-    for fl in radar["all_flights"]:
-        writer.writerow([
-            fl["time"], fl["flight_num"], fl["airline"], fl["dest_name"],
-            fl["dest_iata"], fl["terminal"], fl["gate"], fl["status"], fl["aircraft_model"]
-        ])
+    table_header_style = ParagraphStyle(
+        'TableHeader',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8,
+        textColor=colors.white
+    )
 
-    output.seek(0)
-    filename = f"Gulf_Disruption_Report_{date.today().isoformat()}.csv"
+    table_cell_style = ParagraphStyle(
+        'TableCell',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8,
+        textColor=text_color
+    )
+
+    # 1. ANTET (HEADER)
+    current_time_str = datetime.now().strftime("Operational Risk Report - %B %d, %Y | %H:%M GST")
+    header_data = [
+        [
+            Paragraph("<b>GULF DISRUPTION RADAR</b>", title_style),
+            Paragraph(current_time_str, meta_style)
+        ]
+    ]
+    header_table = Table(header_data, colWidths=[250, 290])
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+    ]))
+    
+    elements.append(header_table)
+    elements.append(HRFlowable(width="100%", thickness=1, color=accent_color, spaceBefore=6, spaceAfter=12))
+
+    # 2. YÖNETİCİ ÖZETİ (EXECUTIVE SUMMARY)
+    elements.append(Paragraph("Yönetici Özeti (Executive Summary)", section_heading))
+    summary_text = f"Son 24 saatlik periyotta taranan koridorlarda toplam <b>{radar['canceled']}</b> iptal ve <b>{radar['delayed']}</b> ciddi rötar vakası tespit edilmiştir. Sistem genelinde operasyonel risk akışı aşağıda özetlenmiştir."
+    elements.append(Paragraph(summary_text, body_style))
+    elements.append(Spacer(1, 6))
+
+    # 3. KRİTİK RİSK TABLOSU
+    elements.append(Paragraph("Kritik Risk Tablosu (Critical Corridor Disruption)", section_heading))
+    crit_table_data = [[
+        Paragraph("Rota / İATA", table_header_style),
+        Paragraph("Hedef Adı", table_header_style),
+        Paragraph("İptal", table_header_style),
+        Paragraph("Rötar", table_header_style),
+        Paragraph("Risk Seviyesi", table_header_style)
+    ]]
+    
+    if radar["critical_routes"]:
+        for r in radar["critical_routes"][:8]:
+            crit_table_data.append([
+                Paragraph(f"<b>DXB ➔ {r['iata']}</b>", table_cell_style),
+                Paragraph(r['name'], table_cell_style),
+                Paragraph(str(r['canceled']), table_cell_style),
+                Paragraph(str(r['delayed']), table_cell_style),
+                Paragraph(f"<font color='{'#e11d48' if r['risk_level']=='CRITICAL' else '#d97706'}'><b>{r['risk_level']}</b></font>", table_cell_style)
+            ])
+    else:
+        crit_table_data.append([Paragraph("Kritik seviyede rota bulunmuyor.", table_cell_style), "", "", "", ""])
+
+    c_table = Table(crit_table_data, colWidths=[80, 200, 60, 60, 140])
+    c_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), primary_color),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
+    ]))
+    elements.append(c_table)
+    elements.append(Spacer(1, 10))
+
+    # 4. ETKİLENEN UÇUŞLARIN LİSTESİ
+    elements.append(Paragraph("Etkilenen / Kritik Uçuşlar Listesi", section_heading))
+    flight_table_data = [[
+        Paragraph("Uçuş No", table_header_style),
+        Paragraph("Havayolu", table_header_style),
+        Paragraph("Varış Noktası", table_header_style),
+        Paragraph("Planlanan Saat", table_header_style),
+        Paragraph("Durum", table_header_style)
+    ]]
+    
+    disrupted_flights = [f for f in radar["all_flights"] if f["status"] in ["Canceled", "Delayed"]][:12]
+    if disrupted_flights:
+        for f in disrupted_flights:
+            status_color = "#e11d48" if f['status'] == "Canceled" else "#d97706"
+            flight_table_data.append([
+                Paragraph(f"<b>{f['flight_num']}</b>", table_cell_style),
+                Paragraph(f['airline'], table_cell_style),
+                Paragraph(f"{f['dest_name']} ({f['dest_iata']})", table_cell_style),
+                Paragraph(f['time'], table_cell_style),
+                Paragraph(f"<font color='{status_color}'><b>{f['status']}</b></font>", table_cell_style)
+            ])
+    else:
+        flight_table_data.append([Paragraph("Aktif kesinti veya rötar kaydı bulunmuyor.", table_cell_style), "", "", "", ""])
+
+    f_table = Table(flight_table_data, colWidths=[70, 130, 160, 70, 110])
+    f_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), primary_color),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
+    ]))
+    elements.append(f_table)
+
+    # 5. ALT BİLGİ (FOOTER)
+    def add_footer(canvas, doc):
+        canvas.saveState()
+        canvas.setFont('Helvetica', 8)
+        canvas.setFillColor(colors.HexColor("#64748b"))
+        footer_text = "Generated by Gulf Disruption Radar. Powered by AeroDataBox. Confidential."
+        canvas.drawCentredString(letter[0] / 2.0, 20, footer_text)
+        canvas.restoreState()
+
+    doc.build(elements, onFirstPage=add_footer, onLaterPages=add_footer)
+    buffer.seek(0)
+    filename = f"Gulf_Disruption_Risk_Report_{date.today().isoformat()}.pdf"
     return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
+        iter([buffer.getvalue()]),
+        media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
