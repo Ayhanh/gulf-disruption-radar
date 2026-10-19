@@ -39,8 +39,8 @@ DATA_CACHE_FILE = BASE_DIR / "rapidapi_API.txt"
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "").strip()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
-APP_BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
-DEBUG_MODE = os.getenv("DEBUG", "true").strip().lower() in {"1", "true", "yes", "on"}
+APP_BASE_URL = os.getenv("APP_BASE_URL", "https://gulfdisruptionradar.co.uk").rstrip("/")
+DEBUG_MODE = os.getenv("DEBUG", "false").strip().lower() in {"1", "true", "yes", "on"}
 ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").strip().lower()]
 
 # SMTP Configuration
@@ -68,7 +68,7 @@ SYSTEM_METRICS = {
 }
 
 # ---------------------------------------------------------
-# EMAIL NOTIFICATION ENGINE (SMTP)
+# EMAIL NOTIFICATION & PASSWORD RESET ENGINE (SMTP)
 # ---------------------------------------------------------
 def send_admin_email(subject: str, body: str):
     if not SMTP_PASSWORD:
@@ -89,6 +89,45 @@ def send_admin_email(subject: str, body: str):
         print(f"[SMTP Success] Email sent: {subject}")
     except Exception as e:
         print(f"[SMTP Error] Email sending failed: {e}")
+
+def send_reset_email(to_email: str, reset_url: str):
+    subject = "Password Reset Request - Gulf Disruption Radar"
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        <h2>Password Reset Request</h2>
+        <p>We received a request to reset your password for your Gulf Disruption Radar account.</p>
+        <p>Click the link below to set a new password (valid for 1 hour):</p>
+        <p><a href="{reset_url}" style="background-color: #0f172a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a></p>
+        <p>If you did not request this, please ignore this email.</p>
+    </div>
+    """
+    
+    if not SMTP_PASSWORD:
+        print("\n" + "="*70)
+        print(f"[PASSWORD RESET LINK FOR {to_email}]:")
+        print(reset_url)
+        print("="*70 + "\n")
+        return
+
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['From'] = SMTP_FROM
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.sendmail(SMTP_FROM, to_email, msg.as_string())
+        server.quit()
+        print(f"[SMTP Success] Password reset email sent to {to_email}")
+    except Exception as e:
+        print(f"[SMTP Error] Failed to send password reset email: {e}")
+        print("\n" + "="*70)
+        print(f"[FALLBACK RESET LINK FOR {to_email}]:")
+        print(reset_url)
+        print("="*70 + "\n")
 
 # ---------------------------------------------------------
 # DATABASE MANAGEMENT & MIGRATION GUARD
@@ -122,6 +161,15 @@ def init_db():
                 telegram_chat_id TEXT,
                 is_pro INTEGER DEFAULT 0,
                 telegram_credits INTEGER DEFAULT 10,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS password_resets (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                token TEXT UNIQUE NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
@@ -181,6 +229,16 @@ def init_db():
                 is_pro INTEGER DEFAULT 0,
                 telegram_credits INTEGER DEFAULT 10,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS password_resets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                token TEXT UNIQUE NOT NULL,
+                expires_at DATETIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             );
         """)
         cursor.execute("""
@@ -1331,7 +1389,7 @@ async def sync_live(request: Request):
     return RedirectResponse(url="/", status_code=303)
 
 # ---------------------------------------------------------
-# AUTH ROUTES
+# AUTH & PASSWORD RESET ROUTES
 # ---------------------------------------------------------
 @app.get("/auth", response_class=HTMLResponse)
 async def auth_page(request: Request, mode: Optional[str] = "register"):
@@ -1455,6 +1513,78 @@ async def logout(request: Request):
     res = RedirectResponse(url="/", status_code=303)
     res.delete_cookie("session_id", path="/", samesite="lax")
     return res
+
+@app.post("/auth/forgot-password")
+async def forgot_password(request: Request, email: str = Form(...)):
+    email_clean = email.strip().lower()
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(format_query("SELECT id FROM users WHERE lower(email) = ?"), (email_clean,))
+    user = cursor.fetchone()
+
+    if user:
+        user_id = user["id"]
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now() + timedelta(hours=1)
+        
+        cursor.execute(format_query("INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)"), 
+                       (user_id, token, expires_at.strftime("%Y-%m-%d %H:%M:%S")))
+        conn.commit()
+        
+        reset_url = f"{APP_BASE_URL}/auth/reset-password?token={token}"
+        send_reset_email(email_clean, reset_url)
+
+    conn.close()
+    context = {
+        "request": request,
+        "message": "If an account with that email exists, a password reset link has been sent.",
+        "error": None,
+        "initial_tab": "login",
+        "free_slots_left": max(0, 10 - get_free_user_count())
+    }
+    return templates.TemplateResponse(request, "auth.html", context)
+
+@app.get("/auth/reset-password", response_class=HTMLResponse)
+async def reset_password_get(request: Request, token: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(format_query("SELECT * FROM password_resets WHERE token = ? AND expires_at > ?"), 
+                   (token, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    record = cursor.fetchone()
+    conn.close()
+
+    if not record:
+        return HTMLResponse("<h3>Invalid or expired password reset link.</h3><p><a href='/auth'>Return to Sign In</a></p>", status_code=400)
+
+    return templates.TemplateResponse(request, "reset_password.html", {"request": request, "token": token, "error": None})
+
+@app.post("/auth/reset-password")
+async def reset_password_post(request: Request, token: str = Form(...), password: str = Form(...), confirm_password: str = Form(...)):
+    if password != confirm_password:
+        return templates.TemplateResponse(request, "reset_password.html", {"request": request, "token": token, "error": "Passwords do not match."})
+
+    if len(password) < 6:
+        return templates.TemplateResponse(request, "reset_password.html", {"request": request, "token": token, "error": "Password must be at least 6 characters long."})
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(format_query("SELECT * FROM password_resets WHERE token = ? AND expires_at > ?"), 
+                   (token, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    record = cursor.fetchone()
+
+    if not record:
+        conn.close()
+        return HTMLResponse("<h3>Invalid or expired password reset link.</h3><p><a href='/auth'>Return to Sign In</a></p>", status_code=400)
+
+    user_id = record["user_id"]
+    new_pwd_hash = hash_password(password)
+
+    cursor.execute(format_query("UPDATE users SET password_hash = ? WHERE id = ?"), (new_pwd_hash, user_id))
+    cursor.execute(format_query("DELETE FROM password_resets WHERE token = ?"), (token,))
+    conn.commit()
+    conn.close()
+
+    return RedirectResponse(url="/auth?mode=login&message=Password+updated+successfully", status_code=303)
 
 # ---------------------------------------------------------
 # SUPPORT DESK API
