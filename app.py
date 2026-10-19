@@ -76,6 +76,7 @@ def init_db():
                 password_hash TEXT NOT NULL,
                 telegram_chat_id TEXT,
                 is_pro INTEGER DEFAULT 0,
+                telegram_credits INTEGER DEFAULT 10,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS watchlist (
@@ -118,6 +119,7 @@ def init_db():
                 password_hash TEXT NOT NULL,
                 telegram_chat_id TEXT,
                 is_pro INTEGER DEFAULT 0,
+                telegram_credits INTEGER DEFAULT 10,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
@@ -183,7 +185,7 @@ def verify_password(stored_hash: str, password: str) -> bool:
         return False
 
 # ---------------------------------------------------------
-# TELEGRAM BİLDİRİM MOTORU
+# TELEGRAM BİLDİRİM MOTORU & KREDİ SİSTEMİ
 # ---------------------------------------------------------
 def _send_telegram_worker(chat_id: str, message: str):
     if not chat_id or not TELEGRAM_BOT_TOKEN:
@@ -198,6 +200,14 @@ def _send_telegram_worker(chat_id: str, message: str):
 async def send_telegram(chat_id: str, message: str):
     await asyncio.to_thread(_send_telegram_worker, chat_id, message)
 
+def get_free_user_count() -> int:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_pro = 0")
+    row = cursor.fetchone()
+    conn.close()
+    return row["cnt"] if row else 0
+
 # ---------------------------------------------------------
 # KULLANICI VE KOTA KONTROLLERİ
 # ---------------------------------------------------------
@@ -211,7 +221,7 @@ def get_current_user(request: Request):
     conn = get_db()
     cursor = conn.cursor()
     query = format_query("""
-        SELECT u.id, u.email, u.telegram_chat_id, u.is_pro 
+        SELECT u.id, u.email, u.telegram_chat_id, u.is_pro, u.telegram_credits, u.created_at
         FROM users u 
         JOIN sessions s ON u.id = s.user_id 
         WHERE s.session_id = ?
@@ -231,17 +241,15 @@ def get_current_user(request: Request):
         user_dict["is_admin"] = False
     return user_dict
 
-def get_monthly_search_count(identifier: str) -> int:
-    current_month = date.today().strftime("%Y-%m")
+def get_daily_search_count(identifier: str) -> int:
+    today = date.today().isoformat()
     conn = get_db()
     cursor = conn.cursor()
-    query = format_query("SELECT SUM(count) as total FROM search_logs WHERE identifier = ? AND search_date LIKE ?")
-    cursor.execute(query, (identifier, f"{current_month}%"))
+    query = format_query("SELECT count FROM search_logs WHERE identifier = ? AND search_date = ?")
+    cursor.execute(query, (identifier, today))
     row = cursor.fetchone()
     conn.close()
-    if row and row["total"]:
-        return int(row["total"])
-    return 0
+    return row["count"] if row else 0
 
 def increment_search_count(identifier: str):
     today = date.today().isoformat()
@@ -257,7 +265,7 @@ def increment_search_count(identifier: str):
     conn.close()
 
 # ---------------------------------------------------------
-# CANLI HAVALİMANI & FIDS MOTORU
+# CANLI HAVALİMANI & FIDS MOTORU (Rate Limit Korumalı)
 # ---------------------------------------------------------
 def fetch_live_airport_data(iata_code="DXB"):
     url = f"https://aerodatabox.p.rapidapi.com/flights/airports/iata/{iata_code}"
@@ -400,7 +408,7 @@ def parse_radar_data(search_query=""):
     }
 
 # ---------------------------------------------------------
-# GELİŞMİŞ STATE-CHANGE ARKA PLAN MONİTÖRÜ
+# ARKA PLAN MONİTÖRÜ (Kredi ve Zaman Sınırı Kurallı)
 # ---------------------------------------------------------
 async def automated_radar_monitor():
     while True:
@@ -412,8 +420,10 @@ async def automated_radar_monitor():
             conn = get_db()
             cursor = conn.cursor()
 
+            # 1. Tekil Uçuş Takibi (Kredi ve 14 Gün Kontrolü)
             cursor.execute("""
-                SELECT tf.id, tf.user_id, tf.flight_num, tf.airline, tf.destination_name, tf.last_status, u.telegram_chat_id
+                SELECT tf.id, tf.user_id, tf.flight_num, tf.airline, tf.destination_name, tf.last_status, 
+                       u.telegram_chat_id, u.is_pro, u.telegram_credits, u.created_at
                 FROM tracked_flights tf
                 JOIN users u ON tf.user_id = u.id
                 WHERE u.telegram_chat_id IS NOT NULL
@@ -421,6 +431,26 @@ async def automated_radar_monitor():
             tracked_flights_list = cursor.fetchall()
 
             for tf in tracked_flights_list:
+                # Pro değilse 14 gün geçmiş mi kontrol et veya kredisi bitmiş mi kontrol et
+                is_pro = tf["is_pro"]
+                credits_left = tf["telegram_credits"]
+                created_at = tf["created_at"]
+
+                if not is_pro:
+                    # 14 gün kontrolü (created_at + 14 gün)
+                    try:
+                        if isinstance(created_at, str):
+                            reg_date = datetime.fromisoformat(created_at)
+                        else:
+                            reg_date = created_at
+                        if datetime.now() - reg_date > timedelta(days=14):
+                            continue # Süresi dolmuş, bildirim gitmez
+                    except Exception:
+                        pass
+
+                    if credits_left <= 0:
+                        continue # Kredi bitmiş, veri çekme/bildirim gönderme durduruldu
+
                 f_num = tf["flight_num"]
                 old_status = tf["last_status"]
 
@@ -433,38 +463,29 @@ async def automated_radar_monitor():
 
                         if new_status in ["Canceled", "Delayed"]:
                             fl_obj = current_flight_map[f_num]
+                            
+                            # Eğer pro değilse krediyi 1 azalt ve upsell ekle
+                            upsell_text = ""
+                            if not is_pro:
+                                new_credits = max(0, credits_left - 1)
+                                cursor.execute(format_query("UPDATE users SET telegram_credits = ? WHERE id = ?"), (new_credits, tf["user_id"]))
+                                conn.commit()
+                                
+                                if new_credits > 0:
+                                    upsell_text = f"\n\n⚠️ Not: Ücretsiz üyeliğinizde 10 bildirim hakkınızdan {new_credits} tanesi kaldı. Kesintisiz takip ve anlık uyarılar için Pro Pakete geçin.\n🔗 {APP_BASE_URL}/#pricing"
+                                else:
+                                    upsell_text = f"\n\n🛑 Bildirim limitiniz doldu. Uçuşlarınızı takip etmeye devam etmek ve lojistik cezalarından korunmak için lütfen Pro Pakete yükseltin.\n🔗 {APP_BASE_URL}/#pricing"
+
                             alert_msg = (
                                 "🚨 <b>GULF DISRUPTION RADAR | INDIVIDUAL FLIGHT ALERT</b>\n\n"
                                 f"✈️ <b>Flight:</b> <code>{f_num}</code> ({tf['airline']})\n"
                                 f"📍 <b>Route:</b> DXB ➔ {tf['destination_name']}\n"
                                 f"⚠️ <b>Status Changed:</b> <b>{new_status.upper()}</b> (Prev: {old_status})\n"
                                 f"🕒 <b>Scheduled:</b> {fl_obj['time']} GST\n"
-                                f"🚪 <b>Terminal/Gate:</b> T{fl_obj['terminal']} / G-{fl_obj['gate']}\n\n"
-                                f"🔗 <a href='{APP_BASE_URL}'>View Live Radar Dashboard</a>"
+                                f"🚪 <b>Terminal/Gate:</b> T{fl_obj['terminal']} / G-{fl_obj['gate']}"
+                                + upsell_text
                             )
                             await send_telegram(tf["telegram_chat_id"], alert_msg)
-
-            cursor.execute("""
-                SELECT w.route_code, w.destination_name, u.telegram_chat_id 
-                FROM watchlist w
-                JOIN users u ON w.user_id = u.id
-                WHERE u.telegram_chat_id IS NOT NULL
-            """)
-            watchlist_items = cursor.fetchall()
-            route_map = {r["iata"]: r for r in radar["critical_routes"]}
-
-            for item in watchlist_items:
-                code = item["route_code"]
-                if code in route_map and route_map[code]["canceled"] >= 1:
-                    r = route_map[code]
-                    alert_msg = (
-                        "🚨 <b>GULF DISRUPTION RADAR | CORRIDOR ALERT</b>\n\n"
-                        f"📍 <b>Corridor:</b> DXB ➔ {item['destination_name']} ({code})\n"
-                        f"⚠️ <b>Impact:</b> <b>{r['canceled']} CANCELLATIONS</b> out of {r['total']} monitored flights\n"
-                        f"⏱️ <b>Delays:</b> {r['delayed']} flights\n\n"
-                        f"🔗 <a href='{APP_BASE_URL}/?q={code}'>Inspect Route Details</a>"
-                    )
-                    await send_telegram(item["telegram_chat_id"], alert_msg)
 
             conn.close()
         except Exception as e:
@@ -565,7 +586,7 @@ async def export_csv(request: Request):
     )
 
 # ---------------------------------------------------------
-# PWA (PROGRESSIVE WEB APP) ENDPOINT'LERİ
+# PWA ENDPOINT'LERİ
 # ---------------------------------------------------------
 @app.get("/manifest.json")
 async def get_manifest():
@@ -576,7 +597,7 @@ async def get_sw():
     return FileResponse(static_dir / "sw.js", media_type="application/javascript")
 
 # ---------------------------------------------------------
-# ANA SAYFA & TAKİP ROTALARI (GÜNCELLENMİŞ KOTA KONTROLLERİ - AYDA 5 SORGU)
+# ANA SAYFA & KOTA KONTROLLERİ (GÜNDE 5 SORGU, 3 ROTA)
 # ---------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: Optional[str] = None):
@@ -585,23 +606,23 @@ async def index(request: Request, q: Optional[str] = None):
     is_pro = bool(user and user.get("is_pro"))
     identifier = f"user_{user['id']}" if user else f"guest_{client_ip}"
     
-    monthly_search_count = get_monthly_search_count(identifier)
+    daily_search_count = get_daily_search_count(identifier)
 
     if is_pro:
-        search_limit = 100 # Günde 100 sorgu
+        search_limit = 100
         search_limit_reached = False
         remaining_searches = "100/day"
     else:
-        search_limit = 5 # Ücretsiz planda ayda toplam 5 sorgu
-        search_limit_reached = monthly_search_count >= search_limit
-        remaining_searches = max(0, search_limit - monthly_search_count)
+        search_limit = 5 # Günde 5 sorgu
+        search_limit_reached = daily_search_count >= search_limit
+        remaining_searches = max(0, search_limit - daily_search_count)
 
     if q and not search_limit_reached:
         increment_search_count(identifier)
         if not is_pro:
-            monthly_search_count += 1
-            remaining_searches = max(0, search_limit - monthly_search_count)
-            search_limit_reached = monthly_search_count >= search_limit
+            daily_search_count += 1
+            remaining_searches = max(0, search_limit - daily_search_count)
+            search_limit_reached = daily_search_count >= search_limit
 
     radar_data = parse_radar_data(search_query=q or "")
 
@@ -619,9 +640,11 @@ async def index(request: Request, q: Optional[str] = None):
         conn.close()
 
         total_tracked = len(watchlist) + len(tracked_flights)
-        max_track_limit = 50 if is_pro else 2 # Pro için 50, Ücretsiz için 2
+        max_track_limit = 50 if is_pro else 3 # Ücretsiz planda 3 rota/uçuş sınırı
         if total_tracked >= max_track_limit:
             watchlist_limit_reached = True
+
+    free_slots_left = max(0, 10 - get_free_user_count())
 
     return templates.TemplateResponse(
         request=request,
@@ -632,12 +655,13 @@ async def index(request: Request, q: Optional[str] = None):
             "data": radar_data,
             "watchlist": watchlist,
             "tracked_flights": tracked_flights,
-            "search_count": monthly_search_count,
+            "search_count": daily_search_count,
             "search_limit": search_limit,
             "search_limit_reached": search_limit_reached,
             "remaining_searches": remaining_searches,
             "watchlist_limit_reached": watchlist_limit_reached,
             "is_pro": is_pro,
+            "free_slots_left": free_slots_left,
         }
     )
 
@@ -653,7 +677,7 @@ async def track_route(request: Request, route_code: str = Form(...), destination
     cursor.execute(format_query("SELECT COUNT(*) as count FROM watchlist WHERE user_id = ?"), (user["id"],))
     count = cursor.fetchone()["count"]
 
-    max_limit = 50 if user.get("is_pro") else 2
+    max_limit = 50 if user.get("is_pro") else 3
     if count >= max_limit:
         conn.close()
         return RedirectResponse(url="/?limit_reached=1", status_code=303)
@@ -698,7 +722,7 @@ async def track_individual_flight(
     cursor.execute(format_query("SELECT COUNT(*) as count FROM tracked_flights WHERE user_id = ?"), (user["id"],))
     count = cursor.fetchone()["count"]
 
-    max_limit = 50 if user.get("is_pro") else 2
+    max_limit = 50 if user.get("is_pro") else 3
     if count >= max_limit:
         conn.close()
         return RedirectResponse(url="/?limit_reached=1", status_code=303)
@@ -744,7 +768,7 @@ async def sync_live(request: Request):
     return RedirectResponse(url="/", status_code=303)
 
 # ---------------------------------------------------------
-# AUTH ROTALARI (GİRİŞ & KAYIT)
+# AUTH ROTALARI (İlk 10 Kişi Kontenjan Kontrolü)
 # ---------------------------------------------------------
 @app.get("/auth", response_class=HTMLResponse)
 async def auth_page(request: Request, mode: Optional[str] = "register"):
@@ -753,7 +777,7 @@ async def auth_page(request: Request, mode: Optional[str] = "register"):
         return RedirectResponse(url="/", status_code=303)
     return templates.TemplateResponse(
         request=request, name="auth.html",
-        context={"error": None, "message": None, "initial_tab": "register" if mode == "register" else "login"}
+        context={"error": None, "message": None, "initial_tab": "register" if mode == "register" else "login", "free_slots_left": max(0, 10 - get_free_user_count())}
     )
 
 @app.get("/auth/login")
@@ -777,23 +801,30 @@ async def register(
     chat_id_clean = telegram_chat_id.strip() if telegram_chat_id else None
 
     if chat_id_clean and not is_valid_telegram_chat_id(chat_id_clean):
-        return templates.TemplateResponse(request=request, name="auth.html", context={"error": "Invalid Telegram numeric ID.", "message": None, "initial_tab": "register"})
+        return templates.TemplateResponse(request=request, name="auth.html", context={"error": "Invalid Telegram numeric ID.", "message": None, "initial_tab": "register", "free_slots_left": max(0, 10 - get_free_user_count())})
 
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(format_query("SELECT id FROM users WHERE lower(email) = ?"), (email_clean,))
     if cursor.fetchone():
         conn.close()
-        return templates.TemplateResponse(request=request, name="auth.html", context={"error": "This email is already registered.", "message": None, "initial_tab": "register"})
+        return templates.TemplateResponse(request=request, name="auth.html", context={"error": "This email is already registered.", "message": None, "initial_tab": "register", "free_slots_left": max(0, 10 - get_free_user_count())})
 
-    pwd_hash = hash_password(password)
+    # İlk 10 kişi kontrolü
+    free_count = get_free_user_count()
     is_pro_val = 1 if email_clean in ADMIN_EMAILS else 0
 
+    if free_count >= 10 and is_pro_val == 0:
+        conn.close()
+        return templates.TemplateResponse(request=request, name="auth.html", context={"error": "Founding Member Free Tier quota (10 users) is full. Please subscribe to Standard Pro.", "message": None, "initial_tab": "register", "free_slots_left": 0})
+
+    pwd_hash = hash_password(password)
+
     if USE_PG:
-        cursor.execute("INSERT INTO users (email, password_hash, telegram_chat_id, is_pro) VALUES (%s, %s, %s, %s) RETURNING id", (email_clean, pwd_hash, chat_id_clean, is_pro_val))
+        cursor.execute("INSERT INTO users (email, password_hash, telegram_chat_id, is_pro, telegram_credits) VALUES (%s, %s, %s, %s, 10) RETURNING id", (email_clean, pwd_hash, chat_id_clean, is_pro_val))
         user_id = cursor.fetchone()["id"]
     else:
-        cursor.execute("INSERT INTO users (email, password_hash, telegram_chat_id, is_pro) VALUES (?, ?, ?, ?)", (email_clean, pwd_hash, chat_id_clean, is_pro_val))
+        cursor.execute("INSERT INTO users (email, password_hash, telegram_chat_id, is_pro, telegram_credits) VALUES (?, ?, ?, ?, 10)", (email_clean, pwd_hash, chat_id_clean, is_pro_val))
         user_id = cursor.lastrowid
 
     session_id = secrets.token_hex(24)
@@ -802,7 +833,7 @@ async def register(
     conn.close()
 
     if chat_id_clean:
-        await send_telegram(chat_id_clean, "👋 <b>Gulf Disruption Radar Active!</b>\n\nYour corridor & flight disruption alerts are linked successfully.")
+        await send_telegram(chat_id_clean, "👋 <b>Gulf Disruption Radar Active!</b>\n\nYour corridor & flight disruption alerts are linked successfully. You have 10 complimentary Telegram notification credits.")
 
     res = RedirectResponse(url="/", status_code=303)
     res.set_cookie("session_id", session_id, max_age=30*86400, httponly=True, secure=not DEBUG_MODE, samesite="lax")
@@ -818,7 +849,7 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
 
     if not user or not verify_password(user["password_hash"], password):
         conn.close()
-        return templates.TemplateResponse(request=request, name="auth.html", context={"error": "Invalid email or password.", "message": None, "initial_tab": "login"})
+        return templates.TemplateResponse(request=request, name="auth.html", context={"error": "Invalid email or password.", "message": None, "initial_tab": "login", "free_slots_left": max(0, 10 - get_free_user_count())})
 
     target_user_id = user["id"]
     session_id = secrets.token_hex(24)

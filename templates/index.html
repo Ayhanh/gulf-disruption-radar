@@ -47,11 +47,11 @@
                     <div class="hidden sm:flex items-center gap-2 mr-2">
                         {% if is_pro %}
                             <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                ⭐ PRO PLAN
+                                ⭐ STANDARD PRO
                             </span>
                         {% else %}
                             <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-                                FREE TIER
+                                🧭 EXPLORER TIER
                             </span>
                         {% endif %}
                         <span class="text-xs text-slate-500 font-medium">{{ user.email }}</span>
@@ -65,7 +65,7 @@
                         Sign In
                     </a>
                     <a href="/auth?mode=register" class="text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl shadow-sm transition">
-                        Create Free Account
+                        Create Free Account (Kalan: {{ free_slots_left }}/10)
                     </a>
                 {% endif %}
             </div>
@@ -91,11 +91,11 @@
         {% if search_limit_reached %}
         <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h4 class="font-bold text-sm text-amber-900">Monthly Corridor Lookup Limit Reached ({{ search_count }}/{{ search_limit }})</h4>
-                <p class="text-xs text-amber-800 mt-1">Upgrade to Pro for high-capacity corridor lookups and continuous 24/7 background sync.</p>
+                <h4 class="font-bold text-sm text-amber-900">Daily Query Limit Reached ({{ search_count }}/{{ search_limit }})</h4>
+                <p class="text-xs text-amber-800 mt-1">Limitinize ulaştınız. Kesintisiz takip ve sınırsız sorgu için Standart Pro plana geçin ($29.90/ay).</p>
             </div>
             <a href="#pricing" class="inline-flex justify-center items-center whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
-                Unlock Pro Plan →
+                Şimdi Yükselt →
             </a>
         </div>
         {% endif %}
@@ -103,11 +103,11 @@
         {% if watchlist_limit_reached %}
         <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 sm:p-5 text-indigo-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-                <h4 class="font-bold text-sm text-indigo-900">Complimentary Tracking Limit Reached (2 Items Max)</h4>
-                <p class="text-xs text-indigo-800 mt-1">Free tier monitors up to 2 routes or flights. Upgrade to Pro for up to 50 tracked entities.</p>
+                <h4 class="font-bold text-sm text-indigo-900">Tracking Limit Reached (3 Items Max)</h4>
+                <p class="text-xs text-indigo-800 mt-1">Limitinize ulaştınız. Kesintisiz takip ve sınırsız sorgu için Standart Pro plana geçin ($29.90/ay).</p>
             </div>
             <a href="#pricing" class="inline-flex justify-center items-center whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
-                Upgrade to Pro (50 Slots) →
+                Şimdi Yükselt →
             </a>
         </div>
         {% endif %}
@@ -123,7 +123,7 @@
                     </a>
                     {% endif %}
                     <span class="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold {{ 'bg-amber-100 text-amber-800' if search_limit_reached else 'bg-slate-100 text-slate-700' }}">
-                        {% if is_pro %}Pro Quota: Active{% else %}Monthly Free Queries: {{ remaining_searches }}/{{ search_limit }}{% endif %}
+                        {% if is_pro %}Standard Pro: Active{% else %}Daily Free Queries: {{ remaining_searches }}/{{ search_limit }}{% endif %}
                     </span>
                 </div>
             </div>
@@ -239,7 +239,8 @@
                     <span class="text-xs text-slate-400">24/7 background Telegram disruption alerts</span>
                 </div>
                 <span class="text-xs font-semibold text-slate-600">
-                    {{ watchlist|length + tracked_flights|length }} / {{ '50 Max' if is_pro else '2 Max' }} Items Tracked
+                    {{ watchlist|length + tracked_flights|length }} / {{ '50 Max' if is_pro else '3 Max' }} Items Tracked
+                    {% if not is_pro %}(Telegram Credits: {{ user.telegram_credits }}/10){% endif %}
                 </span>
             </div>
 
@@ -394,34 +395,40 @@
             </div>
         </section>
 
-        <!-- FİYATLANDIRMA TABLOSU (GÜNCELLENMİŞ KOTALAR & AKTİVASYON SÜRESİ) -->
+        <!-- FİYATLANDIRMA TABLOSU (İstenen Yapıda Güncellendi) -->
         {% if not is_pro %}
         <section id="pricing" class="pt-4">
             <div class="text-center max-w-xl mx-auto mb-8 space-y-2">
                 <h3 class="text-xs font-bold tracking-wider uppercase text-blue-600">TRANSPARENT PRICING</h3>
                 <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Protect Your GCC Logistics & Avoid Freight Penalties</h2>
-                <p class="text-xs text-slate-500">Cancel or change plans anytime. Powered by Dodo Payments.</p>
+                <p class="text-xs text-slate-500">Founding Member Free Tier: Sadece İlk 10 Kullanıcıya Özel (Kalan Kontenjan: {{ free_slots_left }}/10). Powered by Dodo Payments.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                 <div class="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm">
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-bold text-slate-900">Complimentary Tier</span>
-                            <span class="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Base</span>
+                            <span class="text-sm font-bold text-slate-900">Free (Explorer) Tier</span>
+                            <span class="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Sadece İlk 10 Kişi</span>
                         </div>
                         <div class="text-2xl font-extrabold text-slate-900 mb-4">$0 <span class="text-xs font-normal text-slate-500">/ forever</span></div>
                         <ul class="text-xs text-slate-600 space-y-2.5 mb-6">
-                            <li class="flex items-center gap-2"><span>✓</span> <b>5 Monthly</b> Live Corridor Queries (Lifetime Free)</li>
-                            <li class="flex items-center gap-2"><span>✓</span> Track up to <b>2 GCC Corridors or Flights</b></li>
-                            <li class="flex items-center gap-2"><span>✓</span> Real-Time Telegram push alerts</li>
-                            <li class="flex items-center gap-2 text-slate-400"><span>✕</span> CSV Export (Pro feature)</li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>Günde 5 Sorgu</b></li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>3 Rota Takibi</b> (Telegram bildirimleri için)</li>
+                            <li class="flex items-center gap-2"><span>✓</span> 10 Telegram Bildirim Hakkı (Kredi Sistemi)</li>
+                            <li class="flex items-center gap-2 text-slate-400"><span>✕</span> Sınırsız CSV dışa aktarma</li>
                         </ul>
                     </div>
                     {% if not user %}
-                        <a href="/auth" class="w-full text-center bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2.5 rounded-xl transition">
-                            Get Started Free
-                        </a>
+                        {% if free_slots_left > 0 %}
+                            <a href="/auth?mode=register" class="w-full text-center bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2.5 rounded-xl transition">
+                                Ücretsiz Kaydol (Kalan: {{ free_slots_left }})
+                            </a>
+                        {% else %}
+                            <div class="w-full text-center bg-rose-50 text-rose-700 font-semibold text-xs py-2.5 rounded-xl border border-rose-200">
+                                Kontenjan Doldu (10/10)
+                            </div>
+                        {% endif %}
                     {% else %}
                         <div class="w-full text-center bg-slate-50 text-slate-400 font-semibold text-xs py-2.5 rounded-xl border border-slate-200">
                             Current Active Tier
@@ -435,7 +442,7 @@
                     </span>
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-bold text-slate-900">Radar Pro</span>
+                            <span class="text-sm font-bold text-slate-900">Standard Pro</span>
                             <span class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">High Capacity</span>
                         </div>
                         <div class="flex items-baseline gap-2 mb-4">
@@ -443,11 +450,10 @@
                             <span class="text-xs text-slate-500">/ month</span>
                         </div>
                         <ul class="text-xs text-slate-700 space-y-2.5 mb-6 font-medium">
-                            <li class="flex items-center gap-2"><span>✓</span> <b>Up to 100 Live Corridor Queries / day</b></li>
-                            <li class="flex items-center gap-2"><span>✓</span> <b>Track up to 50 active routes & flights</b></li>
-                            <li class="flex items-center gap-2"><span>✓</span> Unlimited CSV report exports</li>
-                            <li class="flex items-center gap-2"><span>✓</span> 24/7 continuous background sync & instant Telegram alerts</li>
-                            <li class="flex items-center gap-2 text-slate-500 text-[11px]"><span>ℹ️</span> <i>Alert notifications deduct 1 credit per dispatch.</i></li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>Günde 100 Sorgu</b></li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>50 Rota Takibi</b></li>
+                            <li class="flex items-center gap-2"><span>✓</span> Sınırsız CSV Dışa Aktarma</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Öncelikli Bildirim & 24/7 Background Sync</li>
                         </ul>
                     </div>
 
@@ -500,13 +506,13 @@
 
     </main>
 
-    <!-- FOOTER (AeroDataBox Yasal Atıf Zorunluluğu Eklenmiştir) -->
+    <!-- FOOTER (AeroDataBox Atıf Zorunluluğu) -->
     <footer class="border-t border-slate-200 bg-white py-6 mt-12 text-xs text-slate-500">
         <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
                 <div>© 2026 Gulf Disruption Radar. Real-time GCC corridor intelligence.</div>
                 <p class="text-[11px] text-slate-400 mt-1">
-                    Flight data provided by <a href="https://aerodatabox.com" target="_blank" rel="noopener" class="underline hover:text-slate-600 font-medium">AeroDataBox</a>. Independent logistics operational tool.
+                    Flight data provided by <a href="https://aerodatabox.com" target="_blank" rel="noopener" class="underline hover:text-slate-600 font-medium">AeroDataBox</a>[cite: 4]. Independent logistics operational tool.
                 </p>
             </div>
             <div class="flex items-center gap-4 flex-shrink-0">
@@ -521,10 +527,10 @@
         </div>
     </footer>
 
-    <!-- MODAL DOSYASINI DAHİL ET (modals.html) -->
+    <!-- MODAL DOSYASINI DAHİL ET -->
     {% include "modals.html" %}
 
-    <!-- JAVASCRIPT KONTROLLERİ & PWA SERVICE WORKER -->
+    <!-- JAVASCRIPT KONTROLLERİ -->
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
