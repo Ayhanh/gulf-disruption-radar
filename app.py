@@ -166,7 +166,6 @@ def init_db():
             );
         """)
 
-    # Otomatik sütun ekleme emniyeti (Migration)
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN telegram_credits INTEGER DEFAULT 10;")
     except Exception:
