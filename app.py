@@ -59,14 +59,13 @@ SYSTEM_METRICS = {
     "bot_status": "Active",
     "last_payment_time": "Henüz ödeme alınmadı",
     "last_webhook_status": "Normal",
-    "user_sync_limits": {},  # {user_id: datetime} - Kullanıcı bazlı sync limiti
+    "user_sync_limits": {},
 }
 
 # ---------------------------------------------------------
 # E-POSTA BİLDİRİM MOTORU (SMTP)
 # ---------------------------------------------------------
 def send_admin_email(subject: str, body: str):
-    """Doğrudan ayhan.hakyemez@gmail.com adresine SMTP üzerinden e-posta bildirimi gönderir."""
     if not SMTP_PASSWORD:
         print(f"[SMTP Warning] SMTP_PASSWORD tanımlanmadığı için e-posta gönderilemedi: {subject}")
         return
@@ -238,7 +237,7 @@ def init_db():
     conn.close()
 
 # ---------------------------------------------------------
-# SAYAÇ VE EŞİK YÖNETİMİ (VERİTABANI TABANLI OTOMATİK SIFIRLAMA)
+# SAYAÇ VE EŞİK YÖNETİMİ
 # ---------------------------------------------------------
 def get_counter(key: str) -> int:
     today_str = date.today().isoformat()
@@ -1138,7 +1137,7 @@ async def untrack_individual_flight(request: Request, flight_id: int = Form(...)
     return RedirectResponse(url="/", status_code=303)
 
 # ---------------------------------------------------------
-# 🛡️ /sync BUTONU (Kullanıcı Bazlı ve Sadece Pro'ya Özel Rate Limit)
+# 🛡️ /sync BUTONU
 # ---------------------------------------------------------
 @app.get("/sync")
 async def sync_live(request: Request):
@@ -1183,7 +1182,7 @@ async def auth_page(request: Request, mode: Optional[str] = "register"):
         "initial_tab": "register" if mode == "register" else "login",
         "free_slots_left": max(0, 10 - get_free_user_count())
     }
-    return templates.TemplateResponse("auth.html", context)
+    return templates.TemplateResponse(request, "auth.html", context)
 
 @app.get("/auth/login")
 @app.get("/login")
@@ -1207,7 +1206,7 @@ async def register(
 
     if chat_id_clean and not is_valid_telegram_chat_id(chat_id_clean):
         context = {"request": request, "error": "Invalid Telegram numeric ID.", "message": None, "initial_tab": "register", "free_slots_left": max(0, 10 - get_free_user_count())}
-        return templates.TemplateResponse("auth.html", context)
+        return templates.TemplateResponse(request, "auth.html", context)
 
     conn = get_db()
     cursor = conn.cursor()
@@ -1215,7 +1214,7 @@ async def register(
     if cursor.fetchone():
         conn.close()
         context = {"request": request, "error": "This email is already registered.", "message": None, "initial_tab": "register", "free_slots_left": max(0, 10 - get_free_user_count())}
-        return templates.TemplateResponse("auth.html", context)
+        return templates.TemplateResponse(request, "auth.html", context)
 
     free_count = get_free_user_count()
     is_pro_val = 1 if email_clean in ADMIN_EMAILS else 0
@@ -1223,7 +1222,7 @@ async def register(
     if free_count >= 10 and is_pro_val == 0:
         conn.close()
         context = {"request": request, "error": "Founding Member Free Tier quota (10 users) is full. Please subscribe to Standard Pro.", "message": None, "initial_tab": "register", "free_slots_left": 0}
-        return templates.TemplateResponse("auth.html", context)
+        return templates.TemplateResponse(request, "auth.html", context)
 
     pwd_hash = hash_password(password)
 
@@ -1268,7 +1267,7 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
     if not user or not verify_password(user["password_hash"], password):
         conn.close()
         context = {"request": request, "error": "Invalid email or password.", "message": None, "initial_tab": "login", "free_slots_left": max(0, 10 - get_free_user_count())}
-        return templates.TemplateResponse("auth.html", context)
+        return templates.TemplateResponse(request, "auth.html", context)
 
     target_user_id = user["id"]
     session_id = secrets.token_hex(24)
