@@ -6,16 +6,18 @@
     <title>Authentication - Gulf Disruption Radar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; }</style>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
 
     <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <a href="/" class="inline-flex items-center gap-2 mb-2">
-            <span class="text-3xl">📡</span>
-            <span class="text-2xl font-bold tracking-tight text-slate-900">Gulf Disruption Radar</span>
+            <span class="text-3xl">✈️</span>
+            <span class="text-xl font-bold tracking-tight text-slate-900">Gulf Disruption Radar</span>
         </a>
-        <h2 class="text-sm font-medium text-slate-500">Access GCC Air Corridor & Cargo Disruption Intelligence</h2>
+        <h2 class="text-sm font-medium text-slate-500">Access Live Air Corridor & Flight Risk Intelligence</h2>
     </div>
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
@@ -27,21 +29,27 @@
             </div>
             {% endif %}
 
-            <!-- Sekmeler -->
-            <div class="flex border-b border-slate-200 mb-6">
+            {% if message %}
+            <div class="mb-5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
+                {{ message }}
+            </div>
+            {% endif %}
+
+            <!-- Sekme Seçici Butonları -->
+            <div class="flex border-b border-slate-200 mb-6" id="authTabs">
                 <button type="button" onclick="showTab('register')" id="tabRegister" class="flex-1 pb-3 text-sm transition {{ 'border-b-2 border-slate-900 text-slate-900 font-semibold' if initial_tab == 'register' else 'border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700' }}">
-                    Create Free Account (Kalan: {{ free_slots_left }}/10)
+                    Create Free Account
                 </button>
                 <button type="button" onclick="showTab('login')" id="tabLogin" class="flex-1 pb-3 text-sm transition {{ 'border-b-2 border-slate-900 text-slate-900 font-semibold' if initial_tab != 'register' else 'border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700' }}">
                     Sign In
                 </button>
             </div>
 
-            <!-- REGISTRATION FORM -->
+            <!-- REGISTRATION FORM (KAYIT) -->
             <form id="formRegister" action="/auth/register" method="POST" class="space-y-4 {{ '' if initial_tab == 'register' else 'hidden' }}">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Corporate or Business Email</label>
-                    <input type="email" name="email" required placeholder="ops@logistics.com" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                    <input type="email" name="email" required placeholder="name@company.com" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
                 </div>
 
                 <div>
@@ -50,44 +58,43 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Telegram Chat ID (Optional for Live Push Alerts)</label>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Telegram Chat ID (Optional for Live Alerts)</label>
                     <input type="text" name="telegram_chat_id" placeholder="e.g. 123456789" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
                     
-                    <div class="mt-3 p-3.5 bg-sky-50/70 border border-sky-200 rounded-xl text-xs text-sky-950 space-y-2">
-                        <div class="flex items-center gap-1.5 font-bold text-sky-900">
+                    <div class="mt-3 p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl text-xs text-blue-950 space-y-2">
+                        <div class="flex items-center gap-1.5 font-bold text-blue-900">
                             <span>⚡</span>
-                            <span>How to Get Your Chat ID & Receive Push Alerts:</span>
+                            <span>How to Get Your Chat ID & Receive Alerts:</span>
                         </div>
                         <ol class="list-decimal list-inside space-y-1 text-slate-700 leading-relaxed">
-                            <li>Open Telegram and start <a href="https://t.me/userinfobot" target="_blank" class="font-bold text-sky-700 underline">@userinfobot</a>.</li>
+                            <li>Open Telegram and start <a href="https://t.me/userinfobot" target="_blank" class="font-bold text-blue-700 underline hover:text-blue-900">@userinfobot</a>.</li>
                             <li>Copy the numeric <b>Id</b> and paste it in the box above.</li>
-                            <li><b class="text-rose-600">Crucial:</b> Start our radar bot and tap <b>Start</b>.</li>
+                            <li><b class="text-rose-600">Crucial:</b> Open our bot <a href="https://t.me/gulf_disruption_radar_bot" target="_blank" class="font-bold text-blue-700 underline hover:text-blue-900">@gulf_disruption_radar_bot</a> and tap <b>Start</b>.</li>
                         </ol>
                     </div>
                 </div>
 
                 <div class="pt-2">
-                    {% if free_slots_left > 0 %}
                     <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-sm text-sm transition">
-                        Get Started Free (Kalan Kontenjan: {{ free_slots_left }}/10) →
+                        Get Started Free (5 Searches & 3 Watchlists) →
                     </button>
-                    {% else %}
-                    <div class="w-full text-center bg-rose-50 border border-rose-200 text-rose-700 font-bold py-2.5 px-4 rounded-xl text-xs">
-                        Ücretsiz Kontenjan Doldu (10/10). Lütfen Pro Pakete Geçin.
-                    </div>
-                    {% endif %}
                 </div>
             </form>
 
-            <!-- LOGIN FORM -->
+            <!-- LOGIN FORM (GİRİŞ) -->
             <form id="formLogin" action="/auth/login" method="POST" class="space-y-4 {{ '' if initial_tab != 'register' else 'hidden' }}">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Email Address</label>
-                    <input type="email" name="email" required placeholder="ops@logistics.com" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                    <input type="email" name="email" required placeholder="name@company.com" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Password</label>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700">Password</label>
+                        <button type="button" onclick="document.getElementById('forgotModal').classList.remove('hidden')" class="text-xs text-sky-600 hover:text-sky-800 font-medium">
+                            Forgot password?
+                        </button>
+                    </div>
                     <input type="password" name="password" required placeholder="••••••••" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
                 </div>
 
@@ -101,27 +108,68 @@
         </div>
 
         <div class="mt-6 text-center">
-            <a href="/" class="text-xs text-slate-500 hover:text-slate-800 font-medium">← Back to Overview</a>
+            <a href="/" class="text-xs text-slate-500 hover:text-slate-800 font-medium">← Back to Radar Home</a>
         </div>
     </div>
 
+    <!-- FORGOT PASSWORD MODAL -->
+    <div id="forgotModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative">
+            <button onclick="document.getElementById('forgotModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">
+                ✕
+            </button>
+            
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center text-sm font-bold">
+                    🔑
+                </div>
+                <h3 class="font-bold text-slate-900 text-sm">Reset Your Password</h3>
+            </div>
+            
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                Enter your registered corporate or personal email. We will send you a secure link to reset your account password.
+            </p>
+
+            <form action="/auth/forgot-password" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">Email Address</label>
+                    <input type="email" name="email" required placeholder="name@company.com" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="document.getElementById('forgotModal').classList.add('hidden')" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 rounded-xl transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="w-1/2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2.5 rounded-xl transition">
+                        Send Reset Link →
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sekmeler Arası Elle Tıklama Geçişi -->
     <script>
         function showTab(type) {
-            const formReg = document.getElementById('formRegister');
-            const formLog = document.getElementById('formLogin');
-            const tabReg = document.getElementById('tabRegister');
-            const tabLog = document.getElementById('tabLogin');
+            var formRegister = document.getElementById('formRegister');
+            var formLogin = document.getElementById('formLogin');
+            var tabRegister = document.getElementById('tabRegister');
+            var tabLogin = document.getElementById('tabLogin');
+
+            if (!formRegister || !formLogin) return;
 
             if (type === 'register') {
-                formReg.classList.remove('hidden');
-                formLog.classList.add('hidden');
-                tabReg.className = "flex-1 pb-3 text-sm transition border-b-2 border-slate-900 text-slate-900 font-semibold";
-                tabLog.className = "flex-1 pb-3 text-sm transition border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700";
+                formRegister.classList.remove('hidden');
+                formLogin.classList.add('hidden');
+                
+                tabRegister.className = "flex-1 pb-3 text-sm transition border-b-2 border-slate-900 text-slate-900 font-semibold";
+                tabLogin.className = "flex-1 pb-3 text-sm transition border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700";
             } else {
-                formLog.classList.remove('hidden');
-                formReg.classList.add('hidden');
-                tabLog.className = "flex-1 pb-3 text-sm transition border-b-2 border-slate-900 text-slate-900 font-semibold";
-                tabReg.className = "flex-1 pb-3 text-sm transition border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700";
+                formLogin.classList.remove('hidden');
+                formRegister.classList.add('hidden');
+
+                tabLogin.className = "flex-1 pb-3 text-sm transition border-b-2 border-slate-900 text-slate-900 font-semibold";
+                tabRegister.className = "flex-1 pb-3 text-sm transition border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700";
             }
         }
     </script>
