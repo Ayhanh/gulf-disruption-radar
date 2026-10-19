@@ -199,7 +199,7 @@ async def send_telegram(chat_id: str, message: str):
     await asyncio.to_thread(_send_telegram_worker, chat_id, message)
 
 # ---------------------------------------------------------
-# KULLANICI VE KOTA KONTROLLERİ (GÜNCELLENDİ)
+# KULLANICI VE KOTA KONTROLLERİ
 # ---------------------------------------------------------
 def is_valid_telegram_chat_id(chat_id: str) -> bool:
     return bool(re.fullmatch(r"-?\d{6,20}", str(chat_id).strip())) if chat_id else False
@@ -576,7 +576,7 @@ async def get_sw():
     return FileResponse(static_dir / "sw.js", media_type="application/javascript")
 
 # ---------------------------------------------------------
-# ANA SAYFA & TAKİP ROTALARI (GÜNCELLENMİŞ KOTA KONTROLLERİ)
+# ANA SAYFA & TAKİP ROTALARI (GÜNCELLENMİŞ KOTA KONTROLLERİ - AYDA 5 SORGU)
 # ---------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: Optional[str] = None):
@@ -592,7 +592,7 @@ async def index(request: Request, q: Optional[str] = None):
         search_limit_reached = False
         remaining_searches = "100/day"
     else:
-        search_limit = 5 # Ücretsiz planda ayda 5 sorgu
+        search_limit = 5 # Ücretsiz planda ayda toplam 5 sorgu
         search_limit_reached = monthly_search_count >= search_limit
         remaining_searches = max(0, search_limit - monthly_search_count)
 
