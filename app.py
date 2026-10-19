@@ -1043,7 +1043,7 @@ async def index(request: Request, q: Optional[str] = None):
         "is_pro": is_pro,
         "free_slots_left": free_slots_left,
     }
-    return templates.TemplateResponse("index.html", context)
+    return templates.TemplateResponse(request, "index.html", context)
 
 @app.post("/track")
 async def track_route(request: Request, route_code: str = Form(...), destination_name: str = Form(...)):
