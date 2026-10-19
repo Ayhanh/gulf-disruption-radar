@@ -10,6 +10,9 @@ import re
 import secrets
 from typing import Optional
 from collections import defaultdict
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, HTTPException, Request
@@ -28,13 +31,19 @@ load_dotenv(BASE_DIR / ".env")
 DB_FILE = BASE_DIR / "flights.db"
 DATA_CACHE_FILE = BASE_DIR / "rapidapi_API.txt"
 
-# Güvenlik: Varsayılan anahtar silindi, .env üzerinden yüklenmesi zorunlu kılındı.
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "").strip()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 DEBUG_MODE = os.getenv("DEBUG", "true").strip().lower() in {"1", "true", "yes", "on"}
 ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").strip().lower()]
+
+# SMTP Konfigürasyonu
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "ayhan.hakyemez@gmail.com")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", "ayhan.hakyemez@gmail.com")
 
 app = FastAPI(title="Gulf Disruption Radar")
 
@@ -44,16 +53,38 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-# Global İzleme / Sağlık Değişkenleri (Admin Paneli İçin)
+# Global İzleme / Sağlık Değişkenleri
 SYSTEM_METRICS = {
-    "last_bot_run": "Henüz çalışmadı",
+    "last_bot_run": datetime.now(),
     "bot_status": "Active",
     "last_payment_time": "Henüz ödeme alınmadı",
     "last_webhook_status": "Normal",
-    "sync_last_called": None,
-    "telegram_sent_today": 0,
-    "api_requests_this_month": 0
+    "user_sync_limits": {},  # {user_id: datetime} - Kullanıcı bazlı sync limiti
 }
+
+# ---------------------------------------------------------
+# E-POSTA BİLDİRİM MOTORU (SMTP)
+# ---------------------------------------------------------
+def send_admin_email(subject: str, body: str):
+    """Doğrudan ayhan.hakyemez@gmail.com adresine SMTP üzerinden e-posta bildirimi gönderir."""
+    if not SMTP_PASSWORD:
+        print(f"[SMTP Warning] SMTP_PASSWORD tanımlanmadığı için e-posta gönderilemedi: {subject}")
+        return
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SMTP_FROM
+        msg['To'] = ADMIN_EMAILS[0]
+        msg['Subject'] = f"🚨 GULF RADAR: {subject}"
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.sendmail(SMTP_FROM, ADMIN_EMAILS[0], msg.as_string())
+        server.quit()
+        print(f"[SMTP Success] E-posta gönderildi: {subject}")
+    except Exception as e:
+        print(f"[SMTP Error] E-posta gönderim hatası: {e}")
 
 # ---------------------------------------------------------
 # VERİTABANI YÖNETİMİ & MİGRATİON KORUMASI
@@ -120,6 +151,11 @@ def init_db():
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS app_counters (
+                key TEXT PRIMARY KEY,
+                val INTEGER DEFAULT 0,
+                last_reset DATE
+            );
         """)
     else:
         cursor.execute("""
@@ -132,8 +168,6 @@ def init_db():
                 telegram_credits INTEGER DEFAULT 10,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-        """)
-        cursor.execute("""
             CREATE TABLE IF NOT EXISTS watchlist (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -143,8 +177,6 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users (id),
                 UNIQUE(user_id, route_code)
             );
-        """)
-        cursor.execute("""
             CREATE TABLE IF NOT EXISTS tracked_flights (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -157,8 +189,6 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users (id),
                 UNIQUE(user_id, flight_num)
             );
-        """)
-        cursor.execute("""
             CREATE TABLE IF NOT EXISTS search_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 identifier TEXT NOT NULL,
@@ -166,13 +196,16 @@ def init_db():
                 count INTEGER DEFAULT 1,
                 UNIQUE(identifier, search_date)
             );
-        """)
-        cursor.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 session_id TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id)
+            );
+            CREATE TABLE IF NOT EXISTS app_counters (
+                key TEXT PRIMARY KEY,
+                val INTEGER DEFAULT 0,
+                last_reset DATE
             );
         """)
 
@@ -182,6 +215,83 @@ def init_db():
         pass
 
     conn.commit()
+    conn.close()
+
+# ---------------------------------------------------------
+# SAYAÇ VE EŞİK YÖNETİMİ (VERİTABANI TABANLI OTOMATİK SIFIRLAMA)
+# ---------------------------------------------------------
+def get_counter(key: str) -> int:
+    today_str = date.today().isoformat()
+    current_month_str = datetime.now().strftime("%Y-%m")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(format_query("SELECT val, last_reset FROM app_counters WHERE key = ?"), (key,))
+    row = cursor.fetchone()
+    
+    if not row:
+        cursor.execute(format_query("INSERT INTO app_counters (key, val, last_reset) VALUES (?, 0, ?)"), (key, today_str if "day" in key else current_month_str))
+        conn.commit()
+        conn.close()
+        return 0
+
+    last_reset = str(row["last_reset"])
+    val = row["val"]
+
+    # Otomatik Sıfırlama Kontrolleri
+    if "day" in key and last_reset != today_str:
+        cursor.execute(format_query("UPDATE app_counters SET val = 0, last_reset = ? WHERE key = ?"), (today_str, key))
+        conn.commit()
+        val = 0
+    elif "month" in key and not last_reset.startswith(current_month_str):
+        cursor.execute(format_query("UPDATE app_counters SET val = 0, last_reset = ? WHERE key = ?"), (current_month_str, key))
+        conn.commit()
+        # Yeni ay başladığında uyarı bayraklarını sıfırlamak için
+        cursor.execute(format_query("DELETE FROM app_counters WHERE key IN ('api_70_sent', 'api_90_sent')"))
+        conn.commit()
+        val = 0
+
+    conn.close()
+    return val
+
+def increment_counter(key: str, amount: int = 1):
+    today_str = date.today().isoformat()
+    current_month_str = datetime.now().strftime("%Y-%m")
+    
+    get_counter(key) # Tarih kontrolü ve sıfırlamayı tetikle
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(format_query("UPDATE app_counters SET val = val + ? WHERE key = ?"), (amount, key))
+    conn.commit()
+    conn.close()
+
+    # API Eşik Kontrolleri (1.600 sınırına göre %70 = 1.120, %90 = 1.440)
+    if key == "api_requests_this_month":
+        current_val = get_counter("api_requests_this_month")
+        
+        # %70 Eşiği (1120)
+        if current_val >= 1120:
+            cursor.execute(format_query("SELECT val FROM app_counters WHERE key = 'api_70_sent'"))
+            sent_70 = cursor.fetchone()
+            if not sent_70 or sent_70["val"] == 0:
+                send_admin_email(
+                    "API Kotası %70 Eşiğini Aştı!",
+                    f"Aylık RapidAPI tüketimi 1,120 sınırını geçti.\nMevcut Kullanım: {current_val} / 1,600"
+                )
+                cursor.execute(format_query("INSERT OR REPLACE INTO app_counters (key, val, last_reset) VALUES ('api_70_sent', 1, ?)"), (current_month_str,))
+                conn.commit()
+
+        # %90 Eşiği (1440)
+        if current_val >= 1440:
+            cursor.execute(format_query("SELECT val FROM app_counters WHERE key = 'api_90_sent'"))
+            sent_90 = cursor.fetchone()
+            if not sent_90 or sent_90["val"] == 0:
+                send_admin_email(
+                    "KRİTİK: API Kotası %90 Doldu!",
+                    f"Aylık RapidAPI tüketimi 1,440 sınırına ulaştı! Lütfen dikkat edin.\nMevcut Kullanım: {current_val} / 1,600"
+                )
+                cursor.execute(format_query("INSERT OR REPLACE INTO app_counters (key, val, last_reset) VALUES ('api_90_sent', 1, ?)"), (current_month_str,))
+                conn.commit()
     conn.close()
 
 # ---------------------------------------------------------
@@ -201,7 +311,7 @@ def verify_password(stored_hash: str, password: str) -> bool:
         return False
 
 # ---------------------------------------------------------
-# TELEGRAM BİLDİRİM MOTORU & KREDİ SİSTEMİ
+# BİLDİRİM MOTORU
 # ---------------------------------------------------------
 def _send_telegram_worker(chat_id: str, message: str):
     if not chat_id or not TELEGRAM_BOT_TOKEN:
@@ -210,7 +320,7 @@ def _send_telegram_worker(chat_id: str, message: str):
     payload = {"chat_id": str(chat_id).strip(), "text": message, "parse_mode": "HTML"}
     try:
         requests.post(url, json=payload, timeout=8)
-        SYSTEM_METRICS["telegram_sent_today"] += 1
+        increment_counter("telegram_sent_today", 1)
     except Exception as e:
         print(f"[Telegram Error]: {e}")
 
@@ -301,7 +411,7 @@ def fetch_live_airport_data(iata_code="DXB"):
     }
     try:
         res = requests.get(url, headers=headers, params=params, timeout=15)
-        SYSTEM_METRICS["api_requests_this_month"] += 1
+        increment_counter("api_requests_this_month", 1)
         if res.status_code == 200:
             with open(DATA_CACHE_FILE, "w", encoding="utf-8") as f:
                 f.write(res.text)
@@ -429,13 +539,13 @@ def parse_radar_data(search_query=""):
     }
 
 # ---------------------------------------------------------
-# ARKA PLAN MONİTÖRÜ
+# ARKA PLAN MONİTÖRÜ (KREDİ BİTİŞ MAİLİ VE SAĞLIK GÜNCELLEMESİ)
 # ---------------------------------------------------------
 async def automated_radar_monitor():
     while True:
         try:
             fetch_live_airport_data("DXB")
-            SYSTEM_METRICS["last_bot_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            SYSTEM_METRICS["last_bot_run"] = datetime.now()
             SYSTEM_METRICS["bot_status"] = "Active"
 
             radar = parse_radar_data()
@@ -446,10 +556,9 @@ async def automated_radar_monitor():
 
             cursor.execute("""
                 SELECT tf.id, tf.user_id, tf.flight_num, tf.airline, tf.destination_name, tf.last_status, 
-                       u.telegram_chat_id, u.is_pro, u.telegram_credits, u.created_at
+                       u.email, u.telegram_chat_id, u.is_pro, u.telegram_credits, u.created_at
                 FROM tracked_flights tf
                 JOIN users u ON tf.user_id = u.id
-                WHERE u.telegram_chat_id IS NOT NULL
             """)
             tracked_flights_list = cursor.fetchall()
 
@@ -457,9 +566,11 @@ async def automated_radar_monitor():
                 is_pro = tf["is_pro"]
                 credits_left = tf["telegram_credits"]
                 created_at = tf["created_at"]
+                user_email = tf["email"]
 
                 if not is_pro:
                     if credits_left <= 0:
+                        # Kredisi biten kullanıcı için yöneticiye e-posta bildirimi gönder (Tekrarsız olması için kontrol eklenebilir)
                         continue
                     try:
                         if isinstance(created_at, str):
@@ -484,27 +595,28 @@ async def automated_radar_monitor():
                         if new_status in ["Canceled", "Delayed"]:
                             fl_obj = current_flight_map[f_num]
                             
-                            upsell_text = ""
                             if not is_pro:
                                 new_credits = max(0, credits_left - 1)
                                 cursor.execute(format_query("UPDATE users SET telegram_credits = ? WHERE id = ?"), (new_credits, tf["user_id"]))
                                 conn.commit()
                                 
-                                if new_credits > 0:
-                                    upsell_text = f"\n\n⚠️ Not: Ücretsiz üyeliğinizde 10 bildirim hakkınızdan {new_credits} tanesi kaldı. Kesintisiz takip için Pro Pakete geçin.\n🔗 {APP_BASE_URL}/#pricing"
-                                else:
-                                    upsell_text = f"\n\n🛑 Bildirim limitiniz doldu. Lütfen Pro Pakete yükseltin.\n🔗 {APP_BASE_URL}/#pricing"
+                                # Kredi sıfırlandığında yöneticiye e-posta bildirimi at
+                                if new_credits == 0:
+                                    send_admin_email(
+                                        "Kullanıcı Kredisi Tükendi!",
+                                        f"Ücretsiz kullanıcının Telegram kredisi bitti.\nKullanıcı: {user_email}"
+                                    )
 
-                            alert_msg = (
-                                "🚨 <b>GULF DISRUPTION RADAR | FLIGHT ALERT</b>\n\n"
-                                f"✈️ <b>Flight:</b> <code>{f_num}</code> ({tf['airline']})\n"
-                                f"📍 <b>Route:</b> DXB ➔ {tf['destination_name']}\n"
-                                f"⚠️ <b>Status Changed:</b> <b>{new_status.upper()}</b> (Prev: {old_status})\n"
-                                f"🕒 <b>Scheduled:</b> {fl_obj['time']} GST\n"
-                                f"🚪 <b>Terminal/Gate:</b> T{fl_obj['terminal']} / G-{fl_obj['gate']}"
-                                + upsell_text
-                            )
-                            await send_telegram(tf["telegram_chat_id"], alert_msg)
+                            if tf["telegram_chat_id"]:
+                                alert_msg = (
+                                    "🚨 <b>GULF DISRUPTION RADAR | FLIGHT ALERT</b>\n\n"
+                                    f"✈️ <b>Flight:</b> <code>{f_num}</code> ({tf['airline']})\n"
+                                    f"📍 <b>Route:</b> DXB ➔ {tf['destination_name']}\n"
+                                    f"⚠️ <b>Status Changed:</b> <b>{new_status.upper()}</b> (Prev: {old_status})\n"
+                                    f"🕒 <b>Scheduled:</b> {fl_obj['time']} GST\n"
+                                    f"🚪 <b>Terminal/Gate:</b> T{fl_obj['terminal']} / G-{fl_obj['gate']}"
+                                )
+                                await send_telegram(tf["telegram_chat_id"], alert_msg)
 
             conn.close()
         except Exception as e:
@@ -518,7 +630,7 @@ async def startup_event():
     asyncio.create_task(automated_radar_monitor())
 
 # ---------------------------------------------------------
-# DODO PAYMENTS WEBHOOK
+# DODO PAYMENTS WEBHOOK (PRO SATIŞ MAİLİ)
 # ---------------------------------------------------------
 @app.post("/api/dodo-webhook")
 async def dodo_webhook(request: Request):
@@ -553,6 +665,12 @@ async def dodo_webhook(request: Request):
         cursor.execute(format_query("UPDATE users SET is_pro = 1 WHERE lower(email) = ?"), (customer_email,))
         conn.commit()
 
+        # Pro Satış E-posta Bildirimi
+        send_admin_email(
+            "Yeni Pro Satışı (+$29.90)",
+            f"Başarılı Pro abonelik satışı gerçekleşti!\nMüşteri E-posta: {customer_email}"
+        )
+
         cursor.execute(format_query("SELECT telegram_chat_id FROM users WHERE lower(email) = ?"), (customer_email,))
         user_row = cursor.fetchone()
 
@@ -578,7 +696,7 @@ async def dodo_webhook(request: Request):
     return {"status": "success"}
 
 # ---------------------------------------------------------
-# 🛡️ ADMIN PANEL ROTASI (/admin)
+# 🛡️ ADMIN PANEL ROTASI (/admin) - DİNAMİK KEEP-ALIVE
 # ---------------------------------------------------------
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(request: Request):
@@ -589,7 +707,6 @@ async def admin_panel(request: Request):
     conn = get_db()
     cursor = conn.cursor()
 
-    # Kullanıcı Metrikleri
     cursor.execute("SELECT COUNT(*) as cnt FROM users")
     total_users = cursor.fetchone()["cnt"]
 
@@ -601,31 +718,26 @@ async def admin_panel(request: Request):
     mrr = pro_users * 29.90
     conversion_rate = round((pro_users / total_users * 100), 1) if total_users > 0 else 0.0
 
-    # Watchlist & Flight Takip Sayıları
     cursor.execute("SELECT COUNT(*) as cnt FROM watchlist")
     total_watchlist = cursor.fetchone()["cnt"]
 
     cursor.execute("SELECT COUNT(*) as cnt FROM tracked_flights")
     total_tracked_flights = cursor.fetchone()["cnt"]
 
-    # Kredisi Bitenler
     cursor.execute("SELECT email, telegram_credits, created_at FROM users WHERE is_pro = 0 AND telegram_credits <= 0")
     exhausted_credits_users = cursor.fetchall()
 
-    # Aktif Oturum Sayısı
     cursor.execute("SELECT COUNT(DISTINCT session_id) as cnt FROM sessions")
     active_sessions = cursor.fetchone()["cnt"]
 
-    # Son Kayıt Olan Kullanıcı
     cursor.execute("SELECT email, created_at FROM users ORDER BY id DESC LIMIT 1")
     last_user_row = cursor.fetchone()
     last_registered_email = last_user_row["email"] if last_user_row else "Henüz yok"
 
     conn.close()
 
-    # API İsteği & Kota Oranı
     api_limit = 1600
-    api_used = SYSTEM_METRICS["api_requests_this_month"]
+    api_used = get_counter("api_requests_this_month")
     api_pct = round((api_used / api_limit * 100), 1) if api_limit > 0 else 0
 
     api_color = "emerald"
@@ -634,12 +746,23 @@ async def admin_panel(request: Request):
     elif api_pct >= 70:
         api_color = "amber"
 
-    # Cache Zamanı
     cache_time_str = "Bilinmiyor"
     if DATA_CACHE_FILE.exists():
         m_time = datetime.fromtimestamp(DATA_CACHE_FILE.stat().st_mtime)
         diff_mins = int((datetime.now() - m_time).total_seconds() / 60)
         cache_time_str = f"{diff_mins} dakika önce"
+
+    # Dinamik Keep-Alive Hesaplama (Bot son 30 dakikada çalıştı mı?)
+    last_run = SYSTEM_METRICS.get("last_bot_run")
+    if isinstance(last_run, datetime):
+        mins_since_run = int((datetime.now() - last_run).total_seconds() / 60)
+    else:
+        mins_since_run = 0
+
+    if mins_since_run <= 30:
+        uptime_html = '<span class="font-bold text-emerald-400">🟢 Active / Keep-Alive OK</span>'
+    else:
+        uptime_html = f'<span class="font-bold text-rose-500">🔴 WARNING: Bot {mins_since_run} dakikadır çalışmadı!</span>'
 
     html_content = f"""
     <!DOCTYPE html>
@@ -674,8 +797,8 @@ async def admin_panel(request: Request):
                         <p class="text-[10px] text-{api_color}-400 font-semibold mt-1">Doluluk: %{api_pct} ({'Normal' if api_pct < 70 else ('Sarı Uyarı' if api_pct < 90 else 'KIRMIZI UYARI!')})</p>
                     </div>
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                        <p class="text-[11px] text-slate-400 font-medium">Bugün Telegram Bildirimi</p>
-                        <p class="text-2xl font-extrabold text-emerald-400 mt-1">{SYSTEM_METRICS['telegram_sent_today']}</p>
+                        <p class="text-[11px] text-slate-400 font-medium">Bugün Gönderilen Telegram</p>
+                        <p class="text-2xl font-extrabold text-emerald-400 mt-1">{get_counter("telegram_sent_today")}</p>
                         <p class="text-[10px] text-slate-400 mt-2">1 birim = 1 push mesajı</p>
                     </div>
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
@@ -684,7 +807,7 @@ async def admin_panel(request: Request):
                             <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
                             <span class="text-xs font-bold text-white">{SYSTEM_METRICS['bot_status']}</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 mt-1">Son Çalışma: {SYSTEM_METRICS['last_bot_run']}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Son Çalışma: {SYSTEM_METRICS['last_bot_run'].strftime('%H:%M:%S')}</p>
                     </div>
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
                         <p class="text-[11px] text-slate-400 font-medium">Cache Güncellenmesi</p>
@@ -735,8 +858,8 @@ async def admin_panel(request: Request):
                             <span class="font-bold text-white">{total_tracked_flights} Uçuş</span>
                         </li>
                         <li class="flex justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
-                            <span>Render Sunucu Durumu (Uptime):</span>
-                            <span class="font-bold text-emerald-400">🟢 Active / Keep-Alive OK</span>
+                            <span>Render Sunucu Durumu (Dinamik Uptime):</span>
+                            <span>{uptime_html}</span>
                         </li>
                         <li class="flex justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
                             <span>Dodo Payments Son Ödeme / Webhook:</span>
@@ -894,24 +1017,22 @@ async def index(request: Request, q: Optional[str] = None):
 
     free_slots_left = max(0, 10 - get_free_user_count())
 
-    return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={
-            "user": user,
-            "query": q,
-            "data": radar_data,
-            "watchlist": watchlist,
-            "tracked_flights": tracked_flights,
-            "search_count": daily_search_count,
-            "search_limit": search_limit,
-            "search_limit_reached": search_limit_reached,
-            "remaining_searches": remaining_searches,
-            "watchlist_limit_reached": watchlist_limit_reached,
-            "is_pro": is_pro,
-            "free_slots_left": free_slots_left,
-        }
-    )
+    context = {
+        "request": request,
+        "user": user,
+        "query": q,
+        "data": radar_data,
+        "watchlist": watchlist,
+        "tracked_flights": tracked_flights,
+        "search_count": daily_search_count,
+        "search_limit": search_limit,
+        "search_limit_reached": search_limit_reached,
+        "remaining_searches": remaining_searches,
+        "watchlist_limit_reached": watchlist_limit_reached,
+        "is_pro": is_pro,
+        "free_slots_left": free_slots_left,
+    }
+    return templates.TemplateResponse("index.html", context)
 
 @app.post("/track")
 async def track_route(request: Request, route_code: str = Form(...), destination_name: str = Form(...)):
@@ -1006,43 +1127,54 @@ async def untrack_individual_flight(request: Request, flight_id: int = Form(...)
     return RedirectResponse(url="/", status_code=303)
 
 # ---------------------------------------------------------
-# 🛡️ /sync BUTONU (Saatte 1 Kez Çalışma Sınırı / Rate Limit)
+# 🛡️ /sync BUTONU (Kullanıcı Bazlı ve Sadece Pro'ya Özel Rate Limit)
 # ---------------------------------------------------------
 @app.get("/sync")
 async def sync_live(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/auth?mode=login", status_code=303)
+    
+    # Sadece Pro üyelere veya adminlere izin verilir (Değilse 403 Forbidden)
+    if not user.get("is_pro") and not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Bu özellik yalnızca Standard Pro üyeler içindir.")
 
+    user_id = user["id"]
     now = datetime.now()
-    last_called = SYSTEM_METRICS.get("sync_last_called")
+    user_sync_limits = SYSTEM_METRICS["user_sync_limits"]
 
-    # Admin e-postaları saatlik sınırdan muaftır, ancak normal kullanıcılar için 1 saat kısıtı vardır.
-    if last_called and not user.get("is_admin"):
+    # Her kullanıcının kendi user_id'si üzerinden 1 saatlik limit kontrolü
+    if user_id in user_sync_limits and not user.get("is_admin"):
+        last_called = user_sync_limits[user_id]
         diff_mins = (now - last_called).total_seconds() / 60
         if diff_mins < 60:
             remaining_mins = int(60 - diff_mins)
             raise HTTPException(
                 status_code=429, 
-                detail=f"Rate limit exceeded. /sync can only be called once per hour. Please wait {remaining_mins} minutes."
+                detail=f"Rate limit exceeded. You can sync once per hour. Please wait {remaining_mins} minutes."
             )
 
-    SYSTEM_METRICS["sync_last_called"] = now
+    user_sync_limits[user_id] = now
     fetch_live_airport_data("DXB")
     return RedirectResponse(url="/", status_code=303)
 
 # ---------------------------------------------------------
-# AUTH ROTALARI
+# AUTH ROTALARI (YENİ KAYIT MAİL BİLDİRİMİ İLE)
 # ---------------------------------------------------------
 @app.get("/auth", response_class=HTMLResponse)
 async def auth_page(request: Request, mode: Optional[str] = "register"):
     user = get_current_user(request)
     if user:
         return RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse(
-        request=request, name="auth.html",
-        context={"error": None, "message": None, "initial_tab": "register" if mode == "register" else "login", "free_slots_left": max(0, 10 - get_free_user_count())}
-    )
+    
+    context = {
+        "request": request,
+        "error": None,
+        "message": None,
+        "initial_tab": "register" if mode == "register" else "login",
+        "free_slots_left": max(0, 10 - get_free_user_count())
+    }
+    return templates.TemplateResponse("auth.html", context)
 
 @app.get("/auth/login")
 @app.get("/login")
@@ -1065,21 +1197,24 @@ async def register(
     chat_id_clean = telegram_chat_id.strip() if telegram_chat_id else None
 
     if chat_id_clean and not is_valid_telegram_chat_id(chat_id_clean):
-        return templates.TemplateResponse(request=request, name="auth.html", context={"error": "Invalid Telegram numeric ID.", "message": None, "initial_tab": "register", "free_slots_left": max(0, 10 - get_free_user_count())})
+        context = {"request": request, "error": "Invalid Telegram numeric ID.", "message": None, "initial_tab": "register", "free_slots_left": max(0, 10 - get_free_user_count())}
+        return templates.TemplateResponse("auth.html", context)
 
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(format_query("SELECT id FROM users WHERE lower(email) = ?"), (email_clean,))
     if cursor.fetchone():
         conn.close()
-        return templates.TemplateResponse(request=request, name="auth.html", context={"error": "This email is already registered.", "message": None, "initial_tab": "register", "free_slots_left": max(0, 10 - get_free_user_count())})
+        context = {"request": request, "error": "This email is already registered.", "message": None, "initial_tab": "register", "free_slots_left": max(0, 10 - get_free_user_count())}
+        return templates.TemplateResponse("auth.html", context)
 
     free_count = get_free_user_count()
     is_pro_val = 1 if email_clean in ADMIN_EMAILS else 0
 
     if free_count >= 10 and is_pro_val == 0:
         conn.close()
-        return templates.TemplateResponse(request=request, name="auth.html", context={"error": "Founding Member Free Tier quota (10 users) is full. Please subscribe to Standard Pro.", "message": None, "initial_tab": "register", "free_slots_left": 0})
+        context = {"request": request, "error": "Founding Member Free Tier quota (10 users) is full. Please subscribe to Standard Pro.", "message": None, "initial_tab": "register", "free_slots_left": 0}
+        return templates.TemplateResponse("auth.html", context)
 
     pwd_hash = hash_password(password)
 
@@ -1095,7 +1230,12 @@ async def register(
     conn.commit()
     conn.close()
 
-    # 10. ÜYE KAYDOLDUĞUNDA ADMIN'E ÖZEL TELEGRAM UYARISI
+    # Yeni Kullanıcı Kaydı E-posta Bildirimi
+    send_admin_email(
+        "Yeni Kullanıcı Kaydı",
+        f"Sisteme yeni bir kullanıcı kayıt oldu:\nE-posta: {email_clean}"
+    )
+
     if free_count + 1 == 10 and is_pro_val == 0:
         admin_chat = os.getenv("MY_TELEGRAM_ID", "").strip()
         if admin_chat:
@@ -1119,7 +1259,8 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
 
     if not user or not verify_password(user["password_hash"], password):
         conn.close()
-        return templates.TemplateResponse(request=request, name="auth.html", context={"error": "Invalid email or password.", "message": None, "initial_tab": "login", "free_slots_left": max(0, 10 - get_free_user_count())})
+        context = {"request": request, "error": "Invalid email or password.", "message": None, "initial_tab": "login", "free_slots_left": max(0, 10 - get_free_user_count())}
+        return templates.TemplateResponse("auth.html", context)
 
     target_user_id = user["id"]
     session_id = secrets.token_hex(24)
