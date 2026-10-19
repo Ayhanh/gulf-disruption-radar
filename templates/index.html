@@ -65,7 +65,7 @@
                         Sign In
                     </a>
                     <a href="/auth?mode=register" class="text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl shadow-sm transition">
-                        Create Free Account (Kalan: {{ free_slots_left }}/10)
+                        Create Free Account (Founding Member: {{ free_slots_left }} Seats Left)
                     </a>
                 {% endif %}
             </div>
@@ -77,7 +77,7 @@
         <!-- HERO -->
         <section class="text-center max-w-3xl mx-auto pt-4 pb-2 space-y-3">
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold tracking-wide">
-                <span>⚡</span> Live Monitoring: Dubai (DXB) Hub Airspace
+                <span>⚡</span> Live Monitoring: Dubai (DXB) Hub Airspace &bull; <span class="text-slate-500 font-normal">Data provided by AeroDataBox (15-min cached update frequency)</span>
             </div>
             <h1 class="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
                 Operate with Certainty. <br class="hidden sm:inline"> Protect Your Supply Chain.
@@ -92,10 +92,10 @@
         <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <h4 class="font-bold text-sm text-amber-900">Daily Query Limit Reached ({{ search_count }}/{{ search_limit }})</h4>
-                <p class="text-xs text-amber-800 mt-1">Limitinize ulaştınız. Kesintisiz takip ve sınırsız sorgu için Standart Pro plana geçin ($29.90/ay).</p>
+                <p class="text-xs text-amber-800 mt-1">You have reached your daily free limit. Upgrade to Standard Pro for unlimited queries ($29.90/mo).</p>
             </div>
             <a href="#pricing" class="inline-flex justify-center items-center whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
-                Şimdi Yükselt →
+                Upgrade Now →
             </a>
         </div>
         {% endif %}
@@ -104,10 +104,10 @@
         <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 sm:p-5 text-indigo-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <h4 class="font-bold text-sm text-indigo-900">Tracking Limit Reached (3 Items Max)</h4>
-                <p class="text-xs text-indigo-800 mt-1">Limitinize ulaştınız. Kesintisiz takip ve sınırsız sorgu için Standart Pro plana geçin ($29.90/ay).</p>
+                <p class="text-xs text-indigo-800 mt-1">You have reached your free tracking quota. Upgrade to Standard Pro for 50 tracked routes & individual flights.</p>
             </div>
             <a href="#pricing" class="inline-flex justify-center items-center whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-sm transition">
-                Şimdi Yükselt →
+                Upgrade Now →
             </a>
         </div>
         {% endif %}
@@ -326,12 +326,12 @@
         </section>
         {% endif %}
 
-        <!-- 2. TABLO: KOMPAKT 8 UÇUŞLUK CANLI UÇUŞ TABLOSU -->
-        <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+        <!-- 2. TABLO: YUMUŞATILMIŞ GİRİŞ DUVARI İLE CANLI UÇUŞ TABLOSU (İLK 2 UÇUŞ NET, GERİSİ BLUR) -->
+        <section class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4 relative">
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-xs font-bold tracking-wider uppercase text-slate-500">LIVE DEPARTURE TIMETABLE</h3>
-                    <p class="text-xs text-slate-400">Showing top 8 flights · Click any row or 'Inspect' for full telemetry</p>
+                    <p class="text-xs text-slate-400">Showing top 8 flights &bull; Real-time status updates</p>
                 </div>
                 
                 <button type="button" onclick="openAllFlightsModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition shadow-sm">
@@ -339,7 +339,7 @@
                 </button>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto relative">
                 <table class="w-full text-left text-xs border-collapse">
                     <thead>
                         <tr class="border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[11px]">
@@ -354,7 +354,8 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         {% for fl in data.top_8_flights %}
-                        <tr class="hover:bg-slate-50/80 transition cursor-pointer" onclick="handleRowClick(event, this)" data-flight='{{ fl|tojson }}'>
+                        {% set is_blurred = (not user) and (loop.index > 2) %}
+                        <tr class="hover:bg-slate-50/80 transition cursor-pointer {{ 'filter blur-[4px] select-none pointer-events-none opacity-50' if is_blurred else '' }}" onclick="handleRowClick(event, this)" data-flight='{{ fl|tojson }}'>
                             <td class="py-3.5 font-mono font-bold text-slate-700">{{ fl.time }}</td>
                             <td class="py-3.5 font-mono font-semibold text-slate-900">{{ fl.flight_num }}</td>
                             <td class="py-3.5 text-slate-600">{{ fl.airline }}</td>
@@ -386,13 +387,49 @@
                         {% endfor %}
                     </tbody>
                 </table>
+
+                <!-- EĞER GİRİŞ YAPILMAMIŞSA BLUR ÜZERİNE TEŞVİK BANNERI -->
+                {% if not user %}
+                <div class="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-white via-white/95 to-transparent flex flex-col items-center justify-center text-center p-6 z-20">
+                    <div class="max-w-md space-y-2">
+                        <span class="inline-block px-3 py-1 rounded-full bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider shadow-sm">
+                            🔒 6 More Live Disruption Streams Hidden
+                        </span>
+                        <p class="text-xs text-slate-600 font-medium">
+                            Sign in or create a free Founding Member account to unlock full live corridor timetables and instant Telegram alerts.
+                        </p>
+                        <div class="pt-1 flex items-center justify-center gap-3">
+                            <a href="/auth?mode=register" class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2 px-4 rounded-xl shadow-sm transition">
+                                Create Free Account (Founding Member: {{ free_slots_left }} Seats Left)
+                            </a>
+                            <a href="/auth?mode=login" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs py-2 px-4 rounded-xl transition">
+                                Sign In
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- TELEGRAM BİLDİRİM ÖRNEĞİ (MOCKUP / ÖNİZLEME) -->
+        <section class="max-w-2xl mx-auto bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-xs font-bold tracking-wider uppercase text-slate-300">Live Telegram Alert Preview (What You Get)</span>
+                </div>
+                <span class="text-[11px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded">Instant Push Notification</span>
             </div>
 
-            <div class="pt-2 text-center border-t border-slate-100">
-                <button type="button" onclick="openAllFlightsModal()" class="text-xs text-slate-500 hover:text-slate-800 font-semibold inline-flex items-center gap-1">
-                    Displaying 8 most urgent departures · Click to expand full {{ data.all_flights|length }} active flights list →
-                </button>
+            <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-1.5 leading-relaxed shadow-inner">
+                <p class="text-sky-400 font-bold">🚨 GULF DISRUPTION RADAR | FLIGHT ALERT</p>
+                <p>✈️ <b>Flight:</b> <code>FZ-821</code> (flydubai Cargo)</p>
+                <p>📍 <b>Route:</b> DXB ➔ RUH (Riyadh)</p>
+                <p>⚠️ <b>Status Changed:</b> <b class="text-rose-400">CANCELED</b> (Prev: Expected)</p>
+                <p class="text-slate-400 text-[11px] pt-1">🕒 Scheduled: 14:30 GST | Gate: T2 / G-14</p>
             </div>
+            <p class="text-[11px] text-slate-400 text-center">Pro users receive these instant state-change push alerts directly on Telegram before ground penalties occur.</p>
         </section>
 
         <!-- FİYATLANDIRMA TABLOSU -->
@@ -401,7 +438,7 @@
             <div class="text-center max-w-xl mx-auto mb-8 space-y-2">
                 <h3 class="text-xs font-bold tracking-wider uppercase text-blue-600">TRANSPARENT PRICING</h3>
                 <h2 class="text-xl sm:text-2xl font-bold text-slate-900">Protect Your GCC Logistics & Avoid Freight Penalties</h2>
-                <p class="text-xs text-slate-500">Founding Member Free Tier: Sadece İlk 10 Kullanıcıya Özel (Kalan Kontenjan: {{ free_slots_left }}/10). Powered by Dodo Payments.</p>
+                <p class="text-xs text-slate-500">Founding Member Free Tier: Only 10 Seats Available (Seats Left: {{ free_slots_left }}/10). Powered by Dodo Payments.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
@@ -409,24 +446,24 @@
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm font-bold text-slate-900">Free (Explorer) Tier</span>
-                            <span class="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Sadece İlk 10 Kişi</span>
+                            <span class="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Founding Member (10 Seats Left)</span>
                         </div>
                         <div class="text-2xl font-extrabold text-slate-900 mb-4">$0 <span class="text-xs font-normal text-slate-500">/ forever</span></div>
                         <ul class="text-xs text-slate-600 space-y-2.5 mb-6">
-                            <li class="flex items-center gap-2"><span>✓</span> <b>Günde 5 Sorgu</b></li>
-                            <li class="flex items-center gap-2"><span>✓</span> <b>3 Rota Takibi</b> (Telegram bildirimleri için)</li>
-                            <li class="flex items-center gap-2"><span>✓</span> 10 Telegram Bildirim Hakkı (Kredi Sistemi)</li>
-                            <li class="flex items-center gap-2 text-slate-400"><span>✕</span> Sınırsız CSV dışa aktarma</li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>5 Daily Queries</b></li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>3 Route / Flight Watchlists</b></li>
+                            <li class="flex items-center gap-2"><span>✓</span> 10 Lifetime Telegram Alert Credits</li>
+                            <li class="flex items-center gap-2 text-slate-400"><span>✕</span> Unlimited CSV exports</li>
                         </ul>
                     </div>
                     {% if not user %}
                         {% if free_slots_left > 0 %}
                             <a href="/auth?mode=register" class="w-full text-center bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2.5 rounded-xl transition">
-                                Ücretsiz Kaydol (Kalan: {{ free_slots_left }})
+                                Register Free (Seats Left: {{ free_slots_left }})
                             </a>
                         {% else %}
                             <div class="w-full text-center bg-rose-50 text-rose-700 font-semibold text-xs py-2.5 rounded-xl border border-rose-200">
-                                Kontenjan Doldu (10/10)
+                                Quota Full (10/10)
                             </div>
                         {% endif %}
                     {% else %}
@@ -450,10 +487,10 @@
                             <span class="text-xs text-slate-500">/ month</span>
                         </div>
                         <ul class="text-xs text-slate-700 space-y-2.5 mb-6 font-medium">
-                            <li class="flex items-center gap-2"><span>✓</span> <b>Günde 100 Sorgu</b></li>
-                            <li class="flex items-center gap-2"><span>✓</span> <b>50 Rota Takibi</b></li>
-                            <li class="flex items-center gap-2"><span>✓</span> Sınırsız CSV Dışa Aktarma</li>
-                            <li class="flex items-center gap-2"><span>✓</span> Öncelikli Bildirim & 24/7 Background Sync</li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>100 Daily Queries</b></li>
+                            <li class="flex items-center gap-2"><span>✓</span> <b>50 Route Watchlists</b></li>
+                            <li class="flex items-center gap-2"><span>✓</span> Unlimited CSV Data Export</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Priority Telegram Push & 24/7 Background Sync</li>
                         </ul>
                     </div>
 
@@ -467,10 +504,10 @@
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <a href="https://checkout.dodopayments.com/buy/pdt_0NpxnL1dgAueN5DU0DSP1?quantity=1&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
-                                Monthly ($29.90/mo) →
+                                Monthly (\$29.90/mo) →
                             </a>
                             <a href="https://checkout.dodopayments.com/buy/pdt_0NpxnaKcUvNH5vHJo1D8j?quantity=1&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
-                                Annual ($249/yr) →
+                                Annual (\$249/yr) →
                             </a>
                         </div>
                     </div>
@@ -510,16 +547,16 @@
     <footer class="border-t border-slate-200 bg-white py-6 mt-12 text-xs text-slate-500">
         <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-                <div>© 2026 Gulf Disruption Radar. Real-time GCC corridor intelligence.</div>
+                <div>&copy; 2026 Gulf Disruption Radar. Real-time GCC corridor intelligence.</div>
                 <p class="text-[11px] text-slate-400 mt-1">
-                    Flight data provided by <a href="https://aerodatabox.com" target="_blank" rel="noopener" class="underline hover:text-slate-600 font-medium">AeroDataBox</a>. Independent logistics operational tool.
+                    Flight data provided by <a href="https://aerodatabox.com" target="_blank" rel="noopener" class="underline hover:text-slate-600 font-medium">AeroDataBox</a> (15-min cached update frequency). Independent logistics operational tool.
                 </p>
             </div>
             <div class="flex items-center gap-4 flex-shrink-0">
                 <a href="https://t.me/gulf_disruption_radar_bot" target="_blank" class="hover:text-slate-700 transition flex items-center gap-1 font-medium">
                     <span>🤖</span> Telegram Bot
                 </a>
-                <span class="text-slate-300">•</span>
+                <span class="text-slate-300">&bull;</span>
                 <button type="button" onclick="openSupportModal()" class="hover:text-slate-700 font-semibold text-slate-600 transition flex items-center gap-1">
                     <span>🛠️</span> Support Desk
                 </button>
