@@ -2,7 +2,6 @@ import asyncio
 import csv
 from datetime import date, datetime, timedelta
 import hashlib
-import hmac
 import io
 import json
 import os
@@ -13,7 +12,7 @@ from typing import Optional
 from collections import defaultdict
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Form, Header, HTTPException, Request
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -34,7 +33,6 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 DEBUG_MODE = os.getenv("DEBUG", "true").strip().lower() in {"1", "true", "yes", "on"}
-DODO_WEBHOOK_SECRET = os.getenv("DODO_WEBHOOK_SECRET", "").strip()
 ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").strip().lower()]
 
 app = FastAPI(title="Gulf Disruption Radar")
@@ -414,7 +412,7 @@ def parse_radar_data(search_query=""):
     }
 
 # ---------------------------------------------------------
-# ARKA PLAN MONİTÖRÜ (Kredi, 14 Gün ve Upsell Kurallı)
+# ARKA PLAN MONİTÖRÜ
 # ---------------------------------------------------------
 async def automated_radar_monitor():
     while True:
@@ -441,10 +439,8 @@ async def automated_radar_monitor():
                 created_at = tf["created_at"]
 
                 if not is_pro:
-                    # Kredi sıfır veya altındaysa API'ye istek/bildirim atma
                     if credits_left <= 0:
                         continue
-
                     try:
                         if isinstance(created_at, str):
                             reg_date = datetime.fromisoformat(created_at)
@@ -475,12 +471,12 @@ async def automated_radar_monitor():
                                 conn.commit()
                                 
                                 if new_credits > 0:
-                                    upsell_text = f"\n\n⚠️ Not: Ücretsiz üyeliğinizde 10 bildirim hakkınızdan {new_credits} tanesi kaldı. Kesintisiz takip ve anlık uyarılar için Pro Pakete geçin.\n🔗 {APP_BASE_URL}/#pricing"
+                                    upsell_text = f"\n\n⚠️ Not: Ücretsiz üyeliğinizde 10 bildirim hakkınızdan {new_credits} tanesi kaldı. Kesintisiz takip için Pro Pakete geçin.\n🔗 {APP_BASE_URL}/#pricing"
                                 else:
-                                    upsell_text = f"\n\n🛑 Bildirim limitiniz doldu. Uçuşlarınızı takip etmeye devam etmek ve lojistik cezalarından korunmak için lütfen Pro Pakete yükseltin.\n🔗 {APP_BASE_URL}/#pricing"
+                                    upsell_text = f"\n\n🛑 Bildirim limitiniz doldu. Lütfen Pro Pakete yükseltin.\n🔗 {APP_BASE_URL}/#pricing"
 
                             alert_msg = (
-                                "🚨 <b>GULF DISRUPTION RADAR | INDIVIDUAL FLIGHT ALERT</b>\n\n"
+                                "🚨 <b>GULF DISRUPTION RADAR | FLIGHT ALERT</b>\n\n"
                                 f"✈️ <b>Flight:</b> <code>{f_num}</code> ({tf['airline']})\n"
                                 f"📍 <b>Route:</b> DXB ➔ {tf['destination_name']}\n"
                                 f"⚠️ <b>Status Changed:</b> <b>{new_status.upper()}</b> (Prev: {old_status})\n"
@@ -547,7 +543,7 @@ async def dodo_webhook(request: Request):
             await send_telegram(user_row["telegram_chat_id"], pro_msg)
 
         if admin_chat:
-            sale_msg = f"💰 <b>NEW GULF RADAR SALE!</b>\n\nCustomer: <code>{customer_email}</code>\nProvider: Dodo Payments"
+            sale_msg = f"💰 <b>NEW GULF RADAR SALE!</b>\n\nCustomer: <code>{customer_email}</code>"
             await send_telegram(admin_chat, sale_msg)
 
     elif event_type in ["subscription.cancelled", "subscription.expired"]:
@@ -589,7 +585,7 @@ async def export_csv(request: Request):
     )
 
 # ---------------------------------------------------------
-# PWA ENDPOINT'LERİ (Güvenli Kontrollü)
+# PWA ENDPOINT'LERİ
 # ---------------------------------------------------------
 @app.get("/manifest.json")
 async def get_manifest():
@@ -674,7 +670,6 @@ async def index(request: Request, q: Optional[str] = None):
         }
     )
 
-# Koridor Takibi
 @app.post("/track")
 async def track_route(request: Request, route_code: str = Form(...), destination_name: str = Form(...)):
     user = get_current_user(request)
@@ -712,7 +707,6 @@ async def untrack_route(request: Request, item_id: int = Form(...)):
     conn.close()
     return RedirectResponse(url="/", status_code=303)
 
-# Tekil Uçuş Takibi
 @app.post("/track-flight")
 async def track_individual_flight(
     request: Request,
@@ -777,7 +771,7 @@ async def sync_live(request: Request):
     return RedirectResponse(url="/", status_code=303)
 
 # ---------------------------------------------------------
-# AUTH ROTALARI (Kontenjan Sınırı & 10. Üye Bildirim Kontrollü)
+# AUTH ROTALARI
 # ---------------------------------------------------------
 @app.get("/auth", response_class=HTMLResponse)
 async def auth_page(request: Request, mode: Optional[str] = "register"):
@@ -844,7 +838,7 @@ async def register(
     if free_count + 1 == 10 and is_pro_val == 0:
         admin_chat = os.getenv("MY_TELEGRAM_ID", "").strip()
         if admin_chat:
-            alert_admin_msg = "🚨 <b>ÜCRETLİ PAKETE GEÇ SORGU SAYISI YETMİYOR</b>\n\n10. Ücretsiz Founding Member üyesi kayıt oldu! Kontenjan tamamen doldu. Ücretli paketlere geçiş yapabilirsiniz."
+            alert_admin_msg = "🚨 <b>ÜCRETLİ PAKETE GEÇ ZAMANI!</b>\n\n10. Ücretsiz Founding Member üyesi kayıt oldu! Kontenjan tamamen doldu."
             await send_telegram(admin_chat, alert_admin_msg)
 
     if chat_id_clean:
@@ -902,7 +896,7 @@ async def support_ticket_api(request: Request):
     if admin_chat:
         support_msg = f"🛠️ <b>GULF RADAR SUPPORT</b>\n\nFrom: {user_email}\nMessage: {msg}"
         await send_telegram(admin_chat, support_msg)
-    return {"success": true}
+    return {"success": True}
 
 if __name__ == "__main__":
     import uvicorn
