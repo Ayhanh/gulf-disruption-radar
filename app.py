@@ -46,7 +46,7 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 # ---------------------------------------------------------
-# VERİTABANI YÖNETİMİ
+# VERİTABANI YÖNETİMİ & MİGRATİON KORUMASI
 # ---------------------------------------------------------
 USE_PG = bool(DATABASE_URL)
 if USE_PG:
@@ -165,6 +165,13 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
         """)
+
+    # Otomatik sütun ekleme emniyeti (Migration)
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN telegram_credits INTEGER DEFAULT 10;")
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -265,7 +272,7 @@ def increment_search_count(identifier: str):
     conn.close()
 
 # ---------------------------------------------------------
-# CANLI HAVALİMANI & FIDS MOTORU (Rate Limit Korumalı)
+# CANLI HAVALİMANI & FIDS MOTORU
 # ---------------------------------------------------------
 def fetch_live_airport_data(iata_code="DXB"):
     url = f"https://aerodatabox.p.rapidapi.com/flights/airports/iata/{iata_code}"
@@ -408,7 +415,7 @@ def parse_radar_data(search_query=""):
     }
 
 # ---------------------------------------------------------
-# ARKA PLAN MONİTÖRÜ (Kredi ve Zaman Sınırı Kurallı)
+# ARKA PLAN MONİTÖRÜ (Kredi, 14 Gün ve Upsell Kurallı)
 # ---------------------------------------------------------
 async def automated_radar_monitor():
     while True:
@@ -420,7 +427,6 @@ async def automated_radar_monitor():
             conn = get_db()
             cursor = conn.cursor()
 
-            # 1. Tekil Uçuş Takibi (Kredi ve 14 Gün Kontrolü)
             cursor.execute("""
                 SELECT tf.id, tf.user_id, tf.flight_num, tf.airline, tf.destination_name, tf.last_status, 
                        u.telegram_chat_id, u.is_pro, u.telegram_credits, u.created_at
@@ -431,25 +437,23 @@ async def automated_radar_monitor():
             tracked_flights_list = cursor.fetchall()
 
             for tf in tracked_flights_list:
-                # Pro değilse 14 gün geçmiş mi kontrol et veya kredisi bitmiş mi kontrol et
                 is_pro = tf["is_pro"]
                 credits_left = tf["telegram_credits"]
                 created_at = tf["created_at"]
 
                 if not is_pro:
-                    # 14 gün kontrolü (created_at + 14 gün)
                     try:
                         if isinstance(created_at, str):
                             reg_date = datetime.fromisoformat(created_at)
                         else:
                             reg_date = created_at
                         if datetime.now() - reg_date > timedelta(days=14):
-                            continue # Süresi dolmuş, bildirim gitmez
+                            continue
                     except Exception:
                         pass
 
                     if credits_left <= 0:
-                        continue # Kredi bitmiş, veri çekme/bildirim gönderme durduruldu
+                        continue
 
                 f_num = tf["flight_num"]
                 old_status = tf["last_status"]
@@ -464,7 +468,6 @@ async def automated_radar_monitor():
                         if new_status in ["Canceled", "Delayed"]:
                             fl_obj = current_flight_map[f_num]
                             
-                            # Eğer pro değilse krediyi 1 azalt ve upsell ekle
                             upsell_text = ""
                             if not is_pro:
                                 new_credits = max(0, credits_left - 1)
@@ -555,7 +558,7 @@ async def dodo_webhook(request: Request):
     return {"status": "success"}
 
 # ---------------------------------------------------------
-# CSV RAPOR DIŞA AKTARMA (EXPORT CSV - PRO)
+# CSV RAPOR DIŞA AKTARMA (PRO)
 # ---------------------------------------------------------
 @app.get("/export-csv")
 async def export_csv(request: Request):
@@ -586,18 +589,24 @@ async def export_csv(request: Request):
     )
 
 # ---------------------------------------------------------
-# PWA ENDPOINT'LERİ
+# PWA ENDPOINT'LERİ (Güvenli Kontrollü)
 # ---------------------------------------------------------
 @app.get("/manifest.json")
 async def get_manifest():
-    return FileResponse(static_dir / "manifest.json", media_type="application/manifest+json")
+    manifest_path = static_dir / "manifest.json"
+    if manifest_path.exists():
+        return FileResponse(manifest_path, media_type="application/manifest+json")
+    return {"name": "Gulf Disruption Radar"}
 
 @app.get("/sw.js")
 async def get_sw():
-    return FileResponse(static_dir / "sw.js", media_type="application/javascript")
+    sw_path = static_dir / "sw.js"
+    if sw_path.exists():
+        return FileResponse(sw_path, media_type="application/javascript")
+    return HTMLResponse("self.addEventListener('fetch', function(e) {});", media_type="application/javascript")
 
 # ---------------------------------------------------------
-# ANA SAYFA & KOTA KONTROLLERİ (GÜNDE 5 SORGU, 3 ROTA)
+# ANA SAYFA & KOTA KONTROLLERİ
 # ---------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: Optional[str] = None):
@@ -613,7 +622,7 @@ async def index(request: Request, q: Optional[str] = None):
         search_limit_reached = False
         remaining_searches = "100/day"
     else:
-        search_limit = 5 # Günde 5 sorgu
+        search_limit = 5
         search_limit_reached = daily_search_count >= search_limit
         remaining_searches = max(0, search_limit - daily_search_count)
 
@@ -640,7 +649,7 @@ async def index(request: Request, q: Optional[str] = None):
         conn.close()
 
         total_tracked = len(watchlist) + len(tracked_flights)
-        max_track_limit = 50 if is_pro else 3 # Ücretsiz planda 3 rota/uçuş sınırı
+        max_track_limit = 50 if is_pro else 3
         if total_tracked >= max_track_limit:
             watchlist_limit_reached = True
 
@@ -768,7 +777,7 @@ async def sync_live(request: Request):
     return RedirectResponse(url="/", status_code=303)
 
 # ---------------------------------------------------------
-# AUTH ROTALARI (İlk 10 Kişi Kontenjan Kontrolü)
+# AUTH ROTALARI (Kontenjan Sınırı Kontrollü)
 # ---------------------------------------------------------
 @app.get("/auth", response_class=HTMLResponse)
 async def auth_page(request: Request, mode: Optional[str] = "register"):
@@ -810,7 +819,6 @@ async def register(
         conn.close()
         return templates.TemplateResponse(request=request, name="auth.html", context={"error": "This email is already registered.", "message": None, "initial_tab": "register", "free_slots_left": max(0, 10 - get_free_user_count())})
 
-    # İlk 10 kişi kontrolü
     free_count = get_free_user_count()
     is_pro_val = 1 if email_clean in ADMIN_EMAILS else 0
 
