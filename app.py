@@ -120,6 +120,8 @@ def init_db():
                 telegram_credits INTEGER DEFAULT 10,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS watchlist (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -128,6 +130,8 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, route_code)
             );
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS tracked_flights (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -139,6 +143,8 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, flight_num)
             );
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS search_logs (
                 id SERIAL PRIMARY KEY,
                 identifier TEXT NOT NULL,
@@ -146,11 +152,15 @@ def init_db():
                 count INTEGER DEFAULT 1,
                 UNIQUE(identifier, search_date)
             );
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 session_id TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS app_counters (
                 key TEXT PRIMARY KEY,
                 val INTEGER DEFAULT 0,
@@ -168,6 +178,8 @@ def init_db():
                 telegram_credits INTEGER DEFAULT 10,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS watchlist (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -177,6 +189,8 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users (id),
                 UNIQUE(user_id, route_code)
             );
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS tracked_flights (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -189,6 +203,8 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users (id),
                 UNIQUE(user_id, flight_num)
             );
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS search_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 identifier TEXT NOT NULL,
@@ -196,12 +212,16 @@ def init_db():
                 count INTEGER DEFAULT 1,
                 UNIQUE(identifier, search_date)
             );
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 session_id TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS app_counters (
                 key TEXT PRIMARY KEY,
                 val INTEGER DEFAULT 0,
@@ -238,7 +258,6 @@ def get_counter(key: str) -> int:
     last_reset = str(row["last_reset"])
     val = row["val"]
 
-    # Otomatik Sıfırlama Kontrolleri
     if "day" in key and last_reset != today_str:
         cursor.execute(format_query("UPDATE app_counters SET val = 0, last_reset = ? WHERE key = ?"), (today_str, key))
         conn.commit()
@@ -246,7 +265,6 @@ def get_counter(key: str) -> int:
     elif "month" in key and not last_reset.startswith(current_month_str):
         cursor.execute(format_query("UPDATE app_counters SET val = 0, last_reset = ? WHERE key = ?"), (current_month_str, key))
         conn.commit()
-        # Yeni ay başladığında uyarı bayraklarını sıfırlamak için
         cursor.execute(format_query("DELETE FROM app_counters WHERE key IN ('api_70_sent', 'api_90_sent')"))
         conn.commit()
         val = 0
@@ -258,18 +276,16 @@ def increment_counter(key: str, amount: int = 1):
     today_str = date.today().isoformat()
     current_month_str = datetime.now().strftime("%Y-%m")
     
-    get_counter(key) # Tarih kontrolü ve sıfırlamayı tetikle
+    get_counter(key)
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(format_query("UPDATE app_counters SET val = val + ? WHERE key = ?"), (amount, key))
     conn.commit()
     conn.close()
 
-    # API Eşik Kontrolleri (1.600 sınırına göre %70 = 1.120, %90 = 1.440)
     if key == "api_requests_this_month":
         current_val = get_counter("api_requests_this_month")
         
-        # %70 Eşiği (1120)
         if current_val >= 1120:
             cursor.execute(format_query("SELECT val FROM app_counters WHERE key = 'api_70_sent'"))
             sent_70 = cursor.fetchone()
@@ -281,7 +297,6 @@ def increment_counter(key: str, amount: int = 1):
                 cursor.execute(format_query("INSERT OR REPLACE INTO app_counters (key, val, last_reset) VALUES ('api_70_sent', 1, ?)"), (current_month_str,))
                 conn.commit()
 
-        # %90 Eşiği (1440)
         if current_val >= 1440:
             cursor.execute(format_query("SELECT val FROM app_counters WHERE key = 'api_90_sent'"))
             sent_90 = cursor.fetchone()
@@ -539,7 +554,7 @@ def parse_radar_data(search_query=""):
     }
 
 # ---------------------------------------------------------
-# ARKA PLAN MONİTÖRÜ (KREDİ BİTİŞ MAİLİ VE SAĞLIK GÜNCELLEMESİ)
+# ARKA PLAN MONİTÖRÜ
 # ---------------------------------------------------------
 async def automated_radar_monitor():
     while True:
@@ -570,7 +585,6 @@ async def automated_radar_monitor():
 
                 if not is_pro:
                     if credits_left <= 0:
-                        # Kredisi biten kullanıcı için yöneticiye e-posta bildirimi gönder (Tekrarsız olması için kontrol eklenebilir)
                         continue
                     try:
                         if isinstance(created_at, str):
@@ -600,7 +614,6 @@ async def automated_radar_monitor():
                                 cursor.execute(format_query("UPDATE users SET telegram_credits = ? WHERE id = ?"), (new_credits, tf["user_id"]))
                                 conn.commit()
                                 
-                                # Kredi sıfırlandığında yöneticiye e-posta bildirimi at
                                 if new_credits == 0:
                                     send_admin_email(
                                         "Kullanıcı Kredisi Tükendi!",
@@ -630,7 +643,7 @@ async def startup_event():
     asyncio.create_task(automated_radar_monitor())
 
 # ---------------------------------------------------------
-# DODO PAYMENTS WEBHOOK (PRO SATIŞ MAİLİ)
+# DODO PAYMENTS WEBHOOK
 # ---------------------------------------------------------
 @app.post("/api/dodo-webhook")
 async def dodo_webhook(request: Request):
@@ -665,7 +678,6 @@ async def dodo_webhook(request: Request):
         cursor.execute(format_query("UPDATE users SET is_pro = 1 WHERE lower(email) = ?"), (customer_email,))
         conn.commit()
 
-        # Pro Satış E-posta Bildirimi
         send_admin_email(
             "Yeni Pro Satışı (+$29.90)",
             f"Başarılı Pro abonelik satışı gerçekleşti!\nMüşteri E-posta: {customer_email}"
@@ -696,7 +708,7 @@ async def dodo_webhook(request: Request):
     return {"status": "success"}
 
 # ---------------------------------------------------------
-# 🛡️ ADMIN PANEL ROTASI (/admin) - DİNAMİK KEEP-ALIVE
+# 🛡️ ADMIN PANEL ROTASI (/admin)
 # ---------------------------------------------------------
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(request: Request):
@@ -752,7 +764,6 @@ async def admin_panel(request: Request):
         diff_mins = int((datetime.now() - m_time).total_seconds() / 60)
         cache_time_str = f"{diff_mins} dakika önce"
 
-    # Dinamik Keep-Alive Hesaplama (Bot son 30 dakikada çalıştı mı?)
     last_run = SYSTEM_METRICS.get("last_bot_run")
     if isinstance(last_run, datetime):
         mins_since_run = int((datetime.now() - last_run).total_seconds() / 60)
@@ -1135,7 +1146,6 @@ async def sync_live(request: Request):
     if not user:
         return RedirectResponse(url="/auth?mode=login", status_code=303)
     
-    # Sadece Pro üyelere veya adminlere izin verilir (Değilse 403 Forbidden)
     if not user.get("is_pro") and not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Bu özellik yalnızca Standard Pro üyeler içindir.")
 
@@ -1143,7 +1153,6 @@ async def sync_live(request: Request):
     now = datetime.now()
     user_sync_limits = SYSTEM_METRICS["user_sync_limits"]
 
-    # Her kullanıcının kendi user_id'si üzerinden 1 saatlik limit kontrolü
     if user_id in user_sync_limits and not user.get("is_admin"):
         last_called = user_sync_limits[user_id]
         diff_mins = (now - last_called).total_seconds() / 60
@@ -1159,7 +1168,7 @@ async def sync_live(request: Request):
     return RedirectResponse(url="/", status_code=303)
 
 # ---------------------------------------------------------
-# AUTH ROTALARI (YENİ KAYIT MAİL BİLDİRİMİ İLE)
+# AUTH ROTALARI
 # ---------------------------------------------------------
 @app.get("/auth", response_class=HTMLResponse)
 async def auth_page(request: Request, mode: Optional[str] = "register"):
@@ -1230,7 +1239,6 @@ async def register(
     conn.commit()
     conn.close()
 
-    # Yeni Kullanıcı Kaydı E-posta Bildirimi
     send_admin_email(
         "Yeni Kullanıcı Kaydı",
         f"Sisteme yeni bir kullanıcı kayıt oldu:\nE-posta: {email_clean}"
