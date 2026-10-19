@@ -30,7 +30,7 @@
             <!-- Sekmeler -->
             <div class="flex border-b border-slate-200 mb-6">
                 <button type="button" onclick="showTab('register')" id="tabRegister" class="flex-1 pb-3 text-sm transition {{ 'border-b-2 border-slate-900 text-slate-900 font-semibold' if initial_tab == 'register' else 'border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700' }}">
-                    Create Free Account
+                    Create Free Account (Kalan: {{ free_slots_left }}/10)
                 </button>
                 <button type="button" onclick="showTab('login')" id="tabLogin" class="flex-1 pb-3 text-sm transition {{ 'border-b-2 border-slate-900 text-slate-900 font-semibold' if initial_tab != 'register' else 'border-b-2 border-transparent text-slate-500 font-medium hover:text-slate-700' }}">
                     Sign In
@@ -67,9 +67,15 @@
                 </div>
 
                 <div class="pt-2">
+                    {% if free_slots_left > 0 %}
                     <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-sm text-sm transition">
-                        Get Started Free (3 Searches & 3 Watchlists) →
+                        Get Started Free (Kalan Kontenjan: {{ free_slots_left }}/10) →
                     </button>
+                    {% else %}
+                    <div class="w-full text-center bg-rose-50 border border-rose-200 text-rose-700 font-bold py-2.5 px-4 rounded-xl text-xs">
+                        Ücretsiz Kontenjan Doldu (10/10). Lütfen Pro Pakete Geçin.
+                    </div>
+                    {% endif %}
                 </div>
             </form>
 

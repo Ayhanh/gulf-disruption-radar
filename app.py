@@ -441,6 +441,10 @@ async def automated_radar_monitor():
                 created_at = tf["created_at"]
 
                 if not is_pro:
+                    # Kredi sıfır veya altındaysa API'ye istek/bildirim atma
+                    if credits_left <= 0:
+                        continue
+
                     try:
                         if isinstance(created_at, str):
                             reg_date = datetime.fromisoformat(created_at)
@@ -450,9 +454,6 @@ async def automated_radar_monitor():
                             continue
                     except Exception:
                         pass
-
-                    if credits_left <= 0:
-                        continue
 
                 f_num = tf["flight_num"]
                 old_status = tf["last_status"]
@@ -776,7 +777,7 @@ async def sync_live(request: Request):
     return RedirectResponse(url="/", status_code=303)
 
 # ---------------------------------------------------------
-# AUTH ROTALARI (Kontenjan Sınırı Kontrollü)
+# AUTH ROTALARI (Kontenjan Sınırı & 10. Üye Bildirim Kontrollü)
 # ---------------------------------------------------------
 @app.get("/auth", response_class=HTMLResponse)
 async def auth_page(request: Request, mode: Optional[str] = "register"):
@@ -839,6 +840,13 @@ async def register(
     conn.commit()
     conn.close()
 
+    # 10. ÜYE KAYDOLDUĞUNDA ADMIN'E ÖZEL TELEGRAM UYARISI
+    if free_count + 1 == 10 and is_pro_val == 0:
+        admin_chat = os.getenv("MY_TELEGRAM_ID", "").strip()
+        if admin_chat:
+            alert_admin_msg = "🚨 <b>ÜCRETLİ PAKETE GEÇ SORGU SAYISI YETMİYOR</b>\n\n10. Ücretsiz Founding Member üyesi kayıt oldu! Kontenjan tamamen doldu. Ücretli paketlere geçiş yapabilirsiniz."
+            await send_telegram(admin_chat, alert_admin_msg)
+
     if chat_id_clean:
         await send_telegram(chat_id_clean, "👋 <b>Gulf Disruption Radar Active!</b>\n\nYour corridor & flight disruption alerts are linked successfully. You have 10 complimentary Telegram notification credits.")
 
@@ -894,7 +902,7 @@ async def support_ticket_api(request: Request):
     if admin_chat:
         support_msg = f"🛠️ <b>GULF RADAR SUPPORT</b>\n\nFrom: {user_email}\nMessage: {msg}"
         await send_telegram(admin_chat, support_msg)
-    return {"success": True}
+    return {"success": true}
 
 if __name__ == "__main__":
     import uvicorn
