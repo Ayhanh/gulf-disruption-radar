@@ -199,7 +199,7 @@ async def send_telegram(chat_id: str, message: str):
     await asyncio.to_thread(_send_telegram_worker, chat_id, message)
 
 # ---------------------------------------------------------
-# KULLANICI VE KOTA KONTROLLERİ
+# KULLANICI VE KOTA KONTROLLERİ (GÜNCELLENDİ)
 # ---------------------------------------------------------
 def is_valid_telegram_chat_id(chat_id: str) -> bool:
     return bool(re.fullmatch(r"-?\d{6,20}", str(chat_id).strip())) if chat_id else False
@@ -231,15 +231,17 @@ def get_current_user(request: Request):
         user_dict["is_admin"] = False
     return user_dict
 
-def get_search_count(identifier: str) -> int:
-    today = date.today().isoformat()
+def get_monthly_search_count(identifier: str) -> int:
+    current_month = date.today().strftime("%Y-%m")
     conn = get_db()
     cursor = conn.cursor()
-    query = format_query("SELECT count FROM search_logs WHERE identifier = ? AND search_date = ?")
-    cursor.execute(query, (identifier, today))
+    query = format_query("SELECT SUM(count) as total FROM search_logs WHERE identifier = ? AND search_date LIKE ?")
+    cursor.execute(query, (identifier, f"{current_month}%"))
     row = cursor.fetchone()
     conn.close()
-    return row["count"] if row else 0
+    if row and row["total"]:
+        return int(row["total"])
+    return 0
 
 def increment_search_count(identifier: str):
     today = date.today().isoformat()
@@ -369,7 +371,6 @@ def parse_radar_data(search_query=""):
         q = search_query.lower()
         all_flights = [fl for fl in all_flights if q in fl["dest_name"].lower() or q in fl["dest_iata"].lower() or q in fl["airline"].lower() or q in fl["flight_num"].lower()]
 
-    # Uçuşları saatine göre kronolojik olarak sırala (en eskiden yeniye)
     all_flights = sorted(all_flights, key=lambda x: x.get("time", ""))
 
     critical_routes = []
@@ -386,7 +387,6 @@ def parse_radar_data(search_query=""):
 
     critical_routes = sorted(critical_routes, key=lambda x: x["canceled"], reverse=True)
 
-    # 35 uçuşluk sınır ve ana sayfada kompakt 8 uçuş
     sliced_flights = all_flights[:35]
     top_8_flights = sliced_flights[:8]
 
@@ -412,7 +412,6 @@ async def automated_radar_monitor():
             conn = get_db()
             cursor = conn.cursor()
 
-            # 1. Tekil Uçuş Takibi (State-Change Alert)
             cursor.execute("""
                 SELECT tf.id, tf.user_id, tf.flight_num, tf.airline, tf.destination_name, tf.last_status, u.telegram_chat_id
                 FROM tracked_flights tf
@@ -428,7 +427,6 @@ async def automated_radar_monitor():
                 if f_num in current_flight_map:
                     new_status = current_flight_map[f_num]["status"]
 
-                    # Durum değiştiyse ve Canceled veya Delayed olduysa bildir
                     if new_status != old_status:
                         cursor.execute(format_query("UPDATE tracked_flights SET last_status = ? WHERE id = ?"), (new_status, tf["id"]))
                         conn.commit()
@@ -446,7 +444,6 @@ async def automated_radar_monitor():
                             )
                             await send_telegram(tf["telegram_chat_id"], alert_msg)
 
-            # 2. Koridor Takibi
             cursor.execute("""
                 SELECT w.route_code, w.destination_name, u.telegram_chat_id 
                 FROM watchlist w
@@ -519,9 +516,9 @@ async def dodo_webhook(request: Request):
             pro_msg = (
                 "🎉 <b>Gulf Disruption Radar | PRO Activated!</b>\n\n"
                 "Your account is upgraded to <b>PRO</b>.\n"
-                "• Unlimited lookups & CSV export\n"
-                "• Unlimited corridor & individual flight tracking\n"
-                "• Instant state-change push alerts"
+                "• Up to 100 corridor queries / day\n"
+                "• Up to 50 tracked routes & individual flights\n"
+                "• Instant state-change push alerts & CSV exports"
             )
             await send_telegram(user_row["telegram_chat_id"], pro_msg)
 
@@ -537,13 +534,16 @@ async def dodo_webhook(request: Request):
     return {"status": "success"}
 
 # ---------------------------------------------------------
-# CSV RAPOR DIŞA AKTARMA (EXPORT CSV)
+# CSV RAPOR DIŞA AKTARMA (EXPORT CSV - PRO)
 # ---------------------------------------------------------
 @app.get("/export-csv")
 async def export_csv(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/auth?mode=login", status_code=303)
+    
+    if not user.get("is_pro"):
+        return RedirectResponse(url="/?limit_reached=1", status_code=303)
 
     radar = parse_radar_data()
     output = io.StringIO()
@@ -565,7 +565,7 @@ async def export_csv(request: Request):
     )
 
 # ---------------------------------------------------------
-# PWA (PROGRESSIVE WEB APP) ENDPOINT'LERİ (YENİ)
+# PWA (PROGRESSIVE WEB APP) ENDPOINT'LERİ
 # ---------------------------------------------------------
 @app.get("/manifest.json")
 async def get_manifest():
@@ -576,7 +576,7 @@ async def get_sw():
     return FileResponse(static_dir / "sw.js", media_type="application/javascript")
 
 # ---------------------------------------------------------
-# ANA SAYFA & TAKİP ROTALARI
+# ANA SAYFA & TAKİP ROTALARI (GÜNCELLENMİŞ KOTA KONTROLLERİ)
 # ---------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, q: Optional[str] = None):
@@ -584,27 +584,24 @@ async def index(request: Request, q: Optional[str] = None):
     client_ip = request.client.host if request.client else "127.0.0.1"
     is_pro = bool(user and user.get("is_pro"))
     identifier = f"user_{user['id']}" if user else f"guest_{client_ip}"
-    search_count = get_search_count(identifier)
+    
+    monthly_search_count = get_monthly_search_count(identifier)
 
     if is_pro:
-        search_limit = 999999
+        search_limit = 100 # Günde 100 sorgu
         search_limit_reached = False
-        remaining_searches = "Unlimited"
-    elif user:
-        search_limit = 5
-        search_limit_reached = search_count >= search_limit
-        remaining_searches = max(0, search_limit - search_count)
+        remaining_searches = "100/day"
     else:
-        search_limit = 3
-        search_limit_reached = search_count >= search_limit
-        remaining_searches = max(0, search_limit - search_count)
+        search_limit = 5 # Ücretsiz planda ayda 5 sorgu
+        search_limit_reached = monthly_search_count >= search_limit
+        remaining_searches = max(0, search_limit - monthly_search_count)
 
     if q and not search_limit_reached:
         increment_search_count(identifier)
         if not is_pro:
-            search_count += 1
-            remaining_searches = max(0, search_limit - search_count)
-            search_limit_reached = search_count >= search_limit
+            monthly_search_count += 1
+            remaining_searches = max(0, search_limit - monthly_search_count)
+            search_limit_reached = monthly_search_count >= search_limit
 
     radar_data = parse_radar_data(search_query=q or "")
 
@@ -622,7 +619,8 @@ async def index(request: Request, q: Optional[str] = None):
         conn.close()
 
         total_tracked = len(watchlist) + len(tracked_flights)
-        if not is_pro and total_tracked >= 3:
+        max_track_limit = 50 if is_pro else 2 # Pro için 50, Ücretsiz için 2
+        if total_tracked >= max_track_limit:
             watchlist_limit_reached = True
 
     return templates.TemplateResponse(
@@ -634,7 +632,7 @@ async def index(request: Request, q: Optional[str] = None):
             "data": radar_data,
             "watchlist": watchlist,
             "tracked_flights": tracked_flights,
-            "search_count": search_count,
+            "search_count": monthly_search_count,
             "search_limit": search_limit,
             "search_limit_reached": search_limit_reached,
             "remaining_searches": remaining_searches,
@@ -655,7 +653,8 @@ async def track_route(request: Request, route_code: str = Form(...), destination
     cursor.execute(format_query("SELECT COUNT(*) as count FROM watchlist WHERE user_id = ?"), (user["id"],))
     count = cursor.fetchone()["count"]
 
-    if not user.get("is_pro") and count >= 3:
+    max_limit = 50 if user.get("is_pro") else 2
+    if count >= max_limit:
         conn.close()
         return RedirectResponse(url="/?limit_reached=1", status_code=303)
 
@@ -699,7 +698,8 @@ async def track_individual_flight(
     cursor.execute(format_query("SELECT COUNT(*) as count FROM tracked_flights WHERE user_id = ?"), (user["id"],))
     count = cursor.fetchone()["count"]
 
-    if not user.get("is_pro") and count >= 3:
+    max_limit = 50 if user.get("is_pro") else 2
+    if count >= max_limit:
         conn.close()
         return RedirectResponse(url="/?limit_reached=1", status_code=303)
 
