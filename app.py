@@ -28,7 +28,8 @@ load_dotenv(BASE_DIR / ".env")
 DB_FILE = BASE_DIR / "flights.db"
 DATA_CACHE_FILE = BASE_DIR / "rapidapi_API.txt"
 
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "f55883fadamsh9cac998915d9bd9p1629b7jsn791c470d22df").strip()
+# Güvenlik: Varsayılan anahtar silindi, .env üzerinden yüklenmesi zorunlu kılındı.
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "").strip()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
@@ -42,6 +43,17 @@ static_dir.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# Global İzleme / Sağlık Değişkenleri (Admin Paneli İçin)
+SYSTEM_METRICS = {
+    "last_bot_run": "Henüz çalışmadı",
+    "bot_status": "Active",
+    "last_payment_time": "Henüz ödeme alınmadı",
+    "last_webhook_status": "Normal",
+    "sync_last_called": None,
+    "telegram_sent_today": 0,
+    "api_requests_this_month": 0
+}
 
 # ---------------------------------------------------------
 # VERİTABANI YÖNETİMİ & MİGRATİON KORUMASI
@@ -198,6 +210,7 @@ def _send_telegram_worker(chat_id: str, message: str):
     payload = {"chat_id": str(chat_id).strip(), "text": message, "parse_mode": "HTML"}
     try:
         requests.post(url, json=payload, timeout=8)
+        SYSTEM_METRICS["telegram_sent_today"] += 1
     except Exception as e:
         print(f"[Telegram Error]: {e}")
 
@@ -272,6 +285,9 @@ def increment_search_count(identifier: str):
 # CANLI HAVALİMANI & FIDS MOTORU
 # ---------------------------------------------------------
 def fetch_live_airport_data(iata_code="DXB"):
+    if not RAPIDAPI_KEY:
+        return False, "RapidAPI Key tanımlanmamış."
+    
     url = f"https://aerodatabox.p.rapidapi.com/flights/airports/iata/{iata_code}"
     headers = {"X-RapidAPI-Key": RAPIDAPI_KEY, "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com"}
     params = {
@@ -285,6 +301,7 @@ def fetch_live_airport_data(iata_code="DXB"):
     }
     try:
         res = requests.get(url, headers=headers, params=params, timeout=15)
+        SYSTEM_METRICS["api_requests_this_month"] += 1
         if res.status_code == 200:
             with open(DATA_CACHE_FILE, "w", encoding="utf-8") as f:
                 f.write(res.text)
@@ -418,6 +435,9 @@ async def automated_radar_monitor():
     while True:
         try:
             fetch_live_airport_data("DXB")
+            SYSTEM_METRICS["last_bot_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            SYSTEM_METRICS["bot_status"] = "Active"
+
             radar = parse_radar_data()
             current_flight_map = {fl["flight_num"]: fl for fl in radar["all_flights"]}
 
@@ -488,6 +508,7 @@ async def automated_radar_monitor():
 
             conn.close()
         except Exception as e:
+            SYSTEM_METRICS["bot_status"] = f"Error: {str(e)}"
             print(f"[Monitor Exception]: {e}")
         await asyncio.sleep(1800)
 
@@ -503,7 +524,9 @@ async def startup_event():
 async def dodo_webhook(request: Request):
     try:
         payload = await request.json()
-    except Exception:
+        SYSTEM_METRICS["last_webhook_status"] = "Success (200 OK)"
+    except Exception as e:
+        SYSTEM_METRICS["last_webhook_status"] = f"Error: {str(e)}"
         raise HTTPException(status_code=400, detail="Invalid payload")
 
     event_type = payload.get("type") or payload.get("event")
@@ -526,6 +549,7 @@ async def dodo_webhook(request: Request):
     cursor = conn.cursor()
 
     if event_type in ["payment.succeeded", "subscription.active", "checkout.session.completed"]:
+        SYSTEM_METRICS["last_payment_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute(format_query("UPDATE users SET is_pro = 1 WHERE lower(email) = ?"), (customer_email,))
         conn.commit()
 
@@ -552,6 +576,225 @@ async def dodo_webhook(request: Request):
 
     conn.close()
     return {"status": "success"}
+
+# ---------------------------------------------------------
+# 🛡️ ADMIN PANEL ROTASI (/admin)
+# ---------------------------------------------------------
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_panel(request: Request):
+    user = get_current_user(request)
+    if not user or not user.get("is_admin"):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Kullanıcı Metrikleri
+    cursor.execute("SELECT COUNT(*) as cnt FROM users")
+    total_users = cursor.fetchone()["cnt"]
+
+    cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_pro = 1")
+    pro_users = cursor.fetchone()["cnt"]
+
+    free_users = total_users - pro_users
+    free_slots_left = max(0, 10 - free_users)
+    mrr = pro_users * 29.90
+    conversion_rate = round((pro_users / total_users * 100), 1) if total_users > 0 else 0.0
+
+    # Watchlist & Flight Takip Sayıları
+    cursor.execute("SELECT COUNT(*) as cnt FROM watchlist")
+    total_watchlist = cursor.fetchone()["cnt"]
+
+    cursor.execute("SELECT COUNT(*) as cnt FROM tracked_flights")
+    total_tracked_flights = cursor.fetchone()["cnt"]
+
+    # Kredisi Bitenler
+    cursor.execute("SELECT email, telegram_credits, created_at FROM users WHERE is_pro = 0 AND telegram_credits <= 0")
+    exhausted_credits_users = cursor.fetchall()
+
+    # Aktif Oturum Sayısı
+    cursor.execute("SELECT COUNT(DISTINCT session_id) as cnt FROM sessions")
+    active_sessions = cursor.fetchone()["cnt"]
+
+    # Son Kayıt Olan Kullanıcı
+    cursor.execute("SELECT email, created_at FROM users ORDER BY id DESC LIMIT 1")
+    last_user_row = cursor.fetchone()
+    last_registered_email = last_user_row["email"] if last_user_row else "Henüz yok"
+
+    conn.close()
+
+    # API İsteği & Kota Oranı
+    api_limit = 1600
+    api_used = SYSTEM_METRICS["api_requests_this_month"]
+    api_pct = round((api_used / api_limit * 100), 1) if api_limit > 0 else 0
+
+    api_color = "emerald"
+    if api_pct >= 90:
+        api_color = "rose"
+    elif api_pct >= 70:
+        api_color = "amber"
+
+    # Cache Zamanı
+    cache_time_str = "Bilinmiyor"
+    if DATA_CACHE_FILE.exists():
+        m_time = datetime.fromtimestamp(DATA_CACHE_FILE.stat().st_mtime)
+        diff_mins = int((datetime.now() - m_time).total_seconds() / 60)
+        cache_time_str = f"{diff_mins} dakika önce"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <title>Gulf Disruption Radar | Admin Control Center</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>body {{ font-family: 'Inter', sans-serif; }}</style>
+    </head>
+    <body class="bg-slate-950 text-slate-100 min-h-screen p-6 antialiased">
+        <div class="max-w-6xl mx-auto space-y-8">
+            <header class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div>
+                    <h1 class="text-xl font-extrabold text-white">🎛️ GULF DISRUPTION RADAR | ADMIN CONTROL CENTER</h1>
+                    <p class="text-xs text-slate-400 mt-0.5">Authorized Founder Access Only • Secured by ADMIN_EMAILS</p>
+                </div>
+                <a href="/" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-xl transition">← Back to Radar App</a>
+            </header>
+
+            <!-- 1. API & KOTA YÖNETİMİ -->
+            <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-sky-400">📊 1. API Maliyet & Kota Yönetimi</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <p class="text-[11px] text-slate-400 font-medium">Aylık API İsteği</p>
+                        <p class="text-2xl font-extrabold text-white mt-1">{api_used} <span class="text-xs font-normal text-slate-400">/ {api_limit}</span></p>
+                        <div class="mt-3 w-full bg-slate-800 rounded-full h-2">
+                            <div class="bg-{api_color}-500 h-2 rounded-full" style="width: {min(api_pct, 100)}%;"></div>
+                        </div>
+                        <p class="text-[10px] text-{api_color}-400 font-semibold mt-1">Doluluk: %{api_pct} ({'Normal' if api_pct < 70 else ('Sarı Uyarı' if api_pct < 90 else 'KIRMIZI UYARI!')})</p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <p class="text-[11px] text-slate-400 font-medium">Bugün Telegram Bildirimi</p>
+                        <p class="text-2xl font-extrabold text-emerald-400 mt-1">{SYSTEM_METRICS['telegram_sent_today']}</p>
+                        <p class="text-[10px] text-slate-400 mt-2">1 birim = 1 push mesajı</p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <p class="text-[11px] text-slate-400 font-medium">Arka Plan Bot Durumu</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span class="text-xs font-bold text-white">{SYSTEM_METRICS['bot_status']}</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">Son Çalışma: {SYSTEM_METRICS['last_bot_run']}</p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <p class="text-[11px] text-slate-400 font-medium">Cache Güncellenmesi</p>
+                        <p class="text-lg font-bold text-white mt-1">{cache_time_str}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">AeroDataBox FIDS verisi</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. FİNANS VE KULLANICI METRİKLERİ -->
+            <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400">💵 2. Finans & Kullanıcı Metrikleri</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <p class="text-[11px] text-slate-400">Toplam Kullanıcı</p>
+                        <p class="text-2xl font-bold text-white mt-1">{total_users} <span class="text-xs font-normal text-slate-400">({free_users} Free / {pro_users} Pro)</span></p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <p class="text-[11px] text-slate-400">Kurucu Üye Kontenjanı</p>
+                        <p class="text-2xl font-bold text-sky-400 mt-1">{free_slots_left} <span class="text-xs font-normal text-slate-400">/ 10 kaldı</span></p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <p class="text-[11px] text-slate-400">Tahmini Gelir (MRR)</p>
+                        <p class="text-2xl font-bold text-emerald-400 mt-1">${mrr:.2f}</p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <p class="text-[11px] text-slate-400">Dönüşüm Oranı (Conv.)</p>
+                        <p class="text-2xl font-bold text-purple-400 mt-1">%{conversion_rate}</p>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <p class="text-[11px] text-slate-400">Aktif Oturum (Session)</p>
+                        <p class="text-2xl font-bold text-amber-400 mt-1">{active_sessions}</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. OPERASYONEL YÜK & SAĞLIK -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-amber-400">📈 3. Operasyonel Yük & Altyapı</h2>
+                    <ul class="space-y-3 text-xs text-slate-300">
+                        <li class="flex justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            <span>Toplam Takip Edilen Rota (Watchlist):</span>
+                            <span class="font-bold text-white">{total_watchlist} Rota</span>
+                        </li>
+                        <li class="flex justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            <span>Toplam Bireysel Takip Edilen Uçuş:</span>
+                            <span class="font-bold text-white">{total_tracked_flights} Uçuş</span>
+                        </li>
+                        <li class="flex justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            <span>Render Sunucu Durumu (Uptime):</span>
+                            <span class="font-bold text-emerald-400">🟢 Active / Keep-Alive OK</span>
+                        </li>
+                        <li class="flex justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            <span>Dodo Payments Son Ödeme / Webhook:</span>
+                            <span class="font-bold text-white">{SYSTEM_METRICS['last_payment_time']} ({SYSTEM_METRICS['last_webhook_status']})</span>
+                        </li>
+                        <li class="flex justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            <span>En Son Kayıt Olan Üye:</span>
+                            <span class="font-bold font-mono text-sky-400">{last_registered_email}</span>
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- 4. POTANSİYEL PRO MÜŞTERİLERİ (KREDİSİ BİTENLER) -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-rose-400">🎯 4. Satış Fırsatı: Kredisi Biten Üyeler</h2>
+                    <p class="text-xs text-slate-400">Aşağıdaki ücretsiz kullanıcıların bildirim kredisi tükenmiştir. Onlara özel e-posta atarak Pro pakete geçirebilirsiniz:</p>
+                    
+                    <div class="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden max-h-52 overflow-y-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">User Email</th>
+                                    <th class="p-3">Credits</th>
+                                    <th class="p-3 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800">
+    """
+
+    if not exhausted_credits_users:
+        html_content += """
+                                <tr>
+                                    <td colspan="3" class="p-4 text-center text-slate-500 italic">Henüz kredisi biten kullanıcı yok.</td>
+                                </tr>
+        """
+    else:
+        for cu in exhausted_credits_users:
+            html_content += f"""
+                                <tr>
+                                    <td class="p-3 font-mono text-slate-200">{cu['email']}</td>
+                                    <td class="p-3 text-rose-400 font-bold">{cu['telegram_credits']}</td>
+                                    <td class="p-3 text-right">
+                                        <a href="mailto:{cu['email']}?subject=Gulf%20Disruption%20Radar%20-%20Upgrade%20to%20Pro" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg font-semibold">Email Send ✉️</a>
+                                    </td>
+                                </tr>
+            """
+
+    html_content += f"""
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
 
 # ---------------------------------------------------------
 # CSV RAPOR DIŞA AKTARMA (PRO)
@@ -762,11 +1005,29 @@ async def untrack_individual_flight(request: Request, flight_id: int = Form(...)
     conn.close()
     return RedirectResponse(url="/", status_code=303)
 
+# ---------------------------------------------------------
+# 🛡️ /sync BUTONU (Saatte 1 Kez Çalışma Sınırı / Rate Limit)
+# ---------------------------------------------------------
 @app.get("/sync")
 async def sync_live(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/auth?mode=login", status_code=303)
+
+    now = datetime.now()
+    last_called = SYSTEM_METRICS.get("sync_last_called")
+
+    # Admin e-postaları saatlik sınırdan muaftır, ancak normal kullanıcılar için 1 saat kısıtı vardır.
+    if last_called and not user.get("is_admin"):
+        diff_mins = (now - last_called).total_seconds() / 60
+        if diff_mins < 60:
+            remaining_mins = int(60 - diff_mins)
+            raise HTTPException(
+                status_code=429, 
+                detail=f"Rate limit exceeded. /sync can only be called once per hour. Please wait {remaining_mins} minutes."
+            )
+
+    SYSTEM_METRICS["sync_last_called"] = now
     fetch_live_airport_data("DXB")
     return RedirectResponse(url="/", status_code=303)
 
