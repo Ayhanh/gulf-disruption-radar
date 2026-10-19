@@ -40,7 +40,7 @@
 
             <div class="flex items-center gap-3">
                 <a href="/sync" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition">
-                    Sync Live Hubs (Pro)
+                    Sync Live Hubs
                 </a>
 
                 {% if user %}
@@ -91,7 +91,7 @@
                 Operate with Certainty. <br class="hidden sm:inline"> Protect Your Supply Chain.
             </h1>
             <p class="text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl mx-auto">
-                Continuous live tracking of high-risk GCC air corridors (Riyadh & Dubai). <b class="text-slate-900">14 cancellations caught in the last 48 hours</b> to prevent cargo penalties. Flight data provided by AeroDataBox (15-min cached update frequency)[cite: 3].
+                Continuous live tracking of high-risk GCC air corridors (Riyadh & Dubai). <b class="text-slate-900">14 cancellations caught in the last 48 hours</b> to prevent cargo penalties. Flight data provided by AeroDataBox (15-min cached update frequency).
             </p>
         </section>
 
@@ -272,7 +272,7 @@
                                 <td class="py-2.5 font-mono font-bold text-slate-900">DXB ➔ {{ item.route_code }}</td>
                                 <td class="py-2.5 text-slate-700">{{ item.destination_name }}</td>
                                 <td class="py-2.5">
-                                    <span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold text-[10px] border border-emerald-200">Email & Telegram Active</span>
+                                    <span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold text-[10px] border border-emerald-200">Telegram Active</span>
                                 </td>
                                 <td class="py-2.5 text-right">
                                     <form action="/untrack" method="POST" class="inline">
@@ -404,7 +404,7 @@
                             🔒 Unlock full stream (Free)
                         </span>
                         <p class="text-xs text-slate-600 font-medium">
-                            Sign in or create a free Founding Member account to unlock full live corridor timetables and instant email/Telegram alerts.
+                            Sign in or create a free Founding Member account to unlock full live corridor timetables and instant Telegram alerts.
                         </p>
                         <div class="pt-1 flex items-center justify-center gap-3">
                             <a href="/auth?mode=register" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-md transition">
@@ -420,12 +420,12 @@
             </div>
         </section>
 
-        <!-- TELEGRAM & EMAIL ALERT MOCKUP -->
+        <!-- TELEGRAM ALERT MOCKUP -->
         <section class="max-w-2xl mx-auto bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-md space-y-3">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span class="text-xs font-bold tracking-wider uppercase text-slate-300">Live Notification Preview (Email & Telegram)</span>
+                    <span class="text-xs font-bold tracking-wider uppercase text-slate-300">Live Telegram Alert Preview (What You Get)</span>
                 </div>
                 <span class="text-[11px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded">Instant Push Notification</span>
             </div>
@@ -438,8 +438,50 @@
                 <p class="text-slate-400 text-[11px] pt-1">🕒 Scheduled: 14:30 GST | Gate: T2 / G-14</p>
             </div>
             <p class="text-[11px] text-slate-300 text-center bg-slate-800/60 py-1.5 px-3 rounded-lg border border-slate-700/50">
-                📌 <b>Note:</b> This alert is sent instantly via email and Telegram <i>only</i> when a status flip (Cancellation / Delay) occurs.
+                📌 <b>Note:</b> This alert is sent instantly <i>only</i> when a status flip (Cancellation / Delay) occurs—not a continuous stream.
             </p>
+        </section>
+
+        <!-- HOW GULF DISRUPTION RADAR PROTECTS YOUR SHIPMENTS (SALES COPY) -->
+        <section class="max-w-4xl mx-auto bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+            <div class="text-center max-w-xl mx-auto space-y-2">
+                <h3 class="text-xs font-bold tracking-wider uppercase text-blue-600">OPERATIONAL EXCELLENCE</h3>
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-900">How Gulf Disruption Radar Protects Your Shipments</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-lg shrink-0">1</div>
+                    <div class="space-y-1">
+                        <h4 class="font-bold text-sm text-slate-900">Define Critical Routes</h4>
+                        <p class="text-xs text-slate-600 leading-relaxed">You tell us which routes and flights are critical to your supply chain operations.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-lg shrink-0">2</div>
+                    <div class="space-y-1">
+                        <h4 class="font-bold text-sm text-slate-900">Continuous Corridor Monitoring</h4>
+                        <p class="text-xs text-slate-600 leading-relaxed">We continuously monitor high-risk Riyadh & Dubai air corridors 24/7 in the background.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-lg shrink-0">3</div>
+                    <div class="space-y-1">
+                        <h4 class="font-bold text-sm text-slate-900">Instant Telegram Push</h4>
+                        <p class="text-xs text-slate-600 leading-relaxed">The second a flight status flips to Cancelled or major Delay → you get an immediate Telegram push notification.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-lg shrink-0">4</div>
+                    <div class="space-y-1">
+                        <h4 class="font-bold text-sm text-slate-900">Immediate Action</h4>
+                        <p class="text-xs text-slate-600 leading-relaxed">You react while others are still refreshing airline websites. No dashboards to babysit. Just the alert when it actually matters.</p>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- PRICING SECTION -->
@@ -462,7 +504,7 @@
                         <ul class="text-xs text-slate-600 space-y-2.5 mb-6">
                             <li class="flex items-center gap-2"><span>✓</span> <b>5 Daily Queries</b></li>
                             <li class="flex items-center gap-2"><span>✓</span> <b>3 Route / Flight Watchlists</b></li>
-                            <li class="flex items-center gap-2"><span>✓</span> 10 Lifetime Alert Credits</li>
+                            <li class="flex items-center gap-2"><span>✓</span> 10 Lifetime Telegram Alert Credits</li>
                             <li class="flex items-center gap-2 text-slate-400"><span>✕</span> Unlimited CSV exports</li>
                         </ul>
                     </div>
@@ -500,7 +542,7 @@
                             <li class="flex items-center gap-2"><span>✓</span> <b>100 Daily Queries</b></li>
                             <li class="flex items-center gap-2"><span>✓</span> <b>50 Route Watchlists</b></li>
                             <li class="flex items-center gap-2"><span>✓</span> Unlimited CSV Data Export</li>
-                            <li class="flex items-center gap-2"><span>✓</span> Priority Email/Telegram Push & Sync</li>
+                            <li class="flex items-center gap-2"><span>✓</span> Priority Telegram Push & 24/7 Background Sync</li>
                         </ul>
                     </div>
 
@@ -526,6 +568,31 @@
         </section>
         {% endif %}
 
+        <!-- MOBILE PWA INSTALL SECTION -->
+        <section id="pwa-install-card" class="bg-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-800 text-center space-y-4">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 text-2xl border border-sky-400/30">
+                📲
+            </div>
+            <div class="max-w-xl mx-auto space-y-2">
+                <h3 class="text-lg sm:text-xl font-bold tracking-tight text-white">
+                    Track GCC Flights On The Go
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    Add Gulf Disruption Radar to your home screen for quick 1-tap access. Runs full-screen directly in your browser with zero App Store downloads or updates.
+                </p>
+            </div>
+
+            <div>
+                <button id="pwa-install-btn" type="button" class="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold text-xs sm:text-sm py-2.5 px-6 rounded-xl shadow-md transition-all">
+                    <span>⚡</span> <span>Add to Home Screen</span>
+                </button>
+            </div>
+
+            <div id="ios-instruction" class="hidden mt-3 max-w-md mx-auto text-xs text-slate-300 bg-slate-800/80 border border-slate-700 rounded-xl p-3">
+                Tap the <strong class="text-white">Share</strong> button <span class="text-sm">⎋</span> in Safari, then scroll down and tap <strong class="text-white">'Add to Home Screen'</strong> ➕.
+            </div>
+        </section>
+
     </main>
 
     <!-- FOOTER -->
@@ -534,13 +601,17 @@
             <div>
                 <div>&copy; 2026 Gulf Disruption Radar. Real-time GCC corridor intelligence.</div>
                 <p class="text-[11px] text-slate-400 mt-1">
-                    Flight data provided by <a href="https://aerodatabox.com" target="_blank" rel="noopener" class="underline hover:text-slate-600 font-medium">AeroDataBox</a> (15-min cached update frequency). Independent logistics operational tool[cite: 3].
+                    Flight data provided by <a href="https://aerodatabox.com" target="_blank" rel="noopener" class="underline hover:text-slate-600 font-medium">AeroDataBox</a> (15-min cached update frequency). Independent logistics operational tool.
                 </p>
             </div>
             <div class="flex items-center gap-4 flex-shrink-0">
                 <a href="https://t.me/gulf_disruption_radar_bot" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition shadow-sm">
                     <span>🤖</span> <span>Open Telegram Bot ↗</span>
                 </a>
+                <span class="text-slate-300">&bull;</span>
+                <button type="button" onclick="openSupportModal()" class="hover:text-slate-700 font-semibold text-slate-600 transition flex items-center gap-1">
+                    <span>🛠️</span> Support Desk
+                </button>
             </div>
         </div>
     </footer>
@@ -548,36 +619,186 @@
     <!-- MODALS -->
     {% include "modals.html" %}
 
+    <!-- JAVASCRIPT CONTROLS -->
     <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch((err) => {
+                console.log('SW registration note:', err);
+            });
+        });
+    }
+
+    let deferredPrompt;
+    const installBtn = document.getElementById('pwa-install-btn');
+    const iosNotice = document.getElementById('ios-instruction');
+    const pwaCard = document.getElementById('pwa-install-card');
+
+    const isIos = () => /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+    const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    if (isStandalone() && pwaCard) {
+        pwaCard.style.display = 'none';
+    }
+
+    window.addEventListener('appinstalled', () => {
+        if (pwaCard) {
+            pwaCard.style.display = 'none';
+        }
+    });
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (installBtn) {
+            installBtn.classList.remove('hidden');
+        }
+    });
+
+    if (installBtn) {
+        if (isIos() && !isStandalone()) {
+            installBtn.innerHTML = `<span>📱</span> <span>Add to iPhone Home Screen</span>`;
+        }
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    if (pwaCard) pwaCard.style.display = 'none';
+                }
+                deferredPrompt = null;
+            } else if (isIos()) {
+                if (iosNotice) {
+                    iosNotice.classList.toggle('hidden');
+                }
+            } else {
+                alert("To install Gulf Disruption Radar, open your browser menu (⋮ or Share) and select 'Add to Home screen' or 'Install App'.");
+            }
+        });
+    }
+
     function openAllFlightsModal() {
         document.getElementById('allFlightsModal').classList.remove('hidden');
     }
+
     function closeAllFlightsModal() {
         document.getElementById('allFlightsModal').classList.add('hidden');
     }
+
+    function filterModalFlights() {
+        const query = document.getElementById('modalFlightSearch').value.toLowerCase();
+        const rows = document.querySelectorAll('#allFlightsTable .flight-row-item');
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
     function handleRowClick(event, rowElement) {
-        if (event.target.closest('button') || event.target.closest('form')) return;
+        if (event.target.closest('button') || event.target.closest('form')) {
+            return;
+        }
         try {
             const flightData = JSON.parse(rowElement.dataset.flight);
             openFlightModal(flightData);
-        } catch(err) { console.error(err); }
+        } catch(err) {
+            console.error("Flight data parse error:", err);
+        }
     }
+
     function openFlightModalFromData(flightJsonString) {
         try {
             const flight = typeof flightJsonString === 'string' ? JSON.parse(flightJsonString) : flightJsonString;
             openFlightModal(flight);
-        } catch(e) { console.error(e); }
+        } catch(e) {
+            console.error("Error opening flight modal:", e);
+        }
     }
+
     function openFlightModal(f) {
         if (!f) return;
         document.getElementById('m_flight_num').innerText = (f.flight_num || '') + " — " + (f.airline || '');
         document.getElementById('m_sub_title').innerText = "DXB to " + (f.dest_name || '') + " (" + (f.dest_iata || '') + ")";
         document.getElementById('m_callsign').innerText = "Callsign: " + (f.call_sign || '-');
+
+        const badge = document.getElementById('m_status_badge');
+        if (f.status === 'Canceled') {
+            badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-rose-500 text-white";
+            badge.innerText = "CANCELED";
+        } else if (f.status === 'Delayed') {
+            badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-500 text-white";
+            badge.innerText = "DELAYED";
+        } else {
+            badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-500 text-white";
+            badge.innerText = (f.status || 'EXPECTED').toUpperCase();
+        }
+
+        document.getElementById('m_sched_local').innerText = f.time || "-";
+        document.getElementById('m_revised').innerText = f.revised_time ? f.revised_time.split("T").pop().substring(0,5) : "-";
+        document.getElementById('m_terminal_gate').innerText = "T" + (f.terminal || '-') + " / G-" + (f.gate || '-');
+        document.getElementById('m_runway').innerText = f.runway || "-";
+
+        document.getElementById('m_dest_name').innerText = f.dest_name || "-";
+        document.getElementById('m_codes').innerText = (f.dest_iata || '-') + " / " + (f.dest_icao || '-');
+        document.getElementById('m_coords').innerText = f.coords || "-";
+
+        document.getElementById('m_ac_model').innerText = f.aircraft_model || "-";
+        document.getElementById('m_ac_reg').innerText = f.aircraft_reg || "-";
+        document.getElementById('m_ac_cargo').innerText = f.is_cargo ? "Dedicated Cargo Aircraft" : "Passenger / Belly Cargo";
+
         document.getElementById('flightModal').classList.remove('hidden');
     }
+
     function closeFlightModal() {
         document.getElementById('flightModal').classList.add('hidden');
     }
+
+    function openSupportModal() {
+        document.getElementById('supportModal').classList.remove('hidden');
+    }
+
+    function closeSupportModal() {
+        document.getElementById('supportModal').classList.add('hidden');
+    }
+
+    async function submitSupportTicket(e) {
+        e.preventDefault();
+        const btn = document.getElementById('supportSubmitBtn');
+        const alertBox = document.getElementById('supportAlert');
+        btn.disabled = true;
+        btn.innerText = 'Sending...';
+
+        try {
+            const res = await fetch('/api/support', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: document.getElementById('supportEmail').value,
+                    message: document.getElementById('supportMessage').value
+                })
+            });
+            if (res.ok) {
+                alertBox.className = "p-3 rounded-xl text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 block";
+                alertBox.innerText = 'Ticket received successfully.';
+                setTimeout(() => closeSupportModal(), 2000);
+            }
+        } catch(err) {
+            alertBox.className = "p-3 rounded-xl text-xs font-medium bg-rose-50 text-rose-800 border border-rose-200 block";
+            alertBox.innerText = 'Could not send message.';
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Send Ticket';
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeAllFlightsModal();
+            closeFlightModal();
+            closeSupportModal();
+        }
+    });
     </script>
 </body>
 </html>
