@@ -616,7 +616,7 @@ def parse_radar_data(search_query=""):
     }
 
 # ---------------------------------------------------------
-# BACKGROUND MONITOR
+# BACKGROUND MONITOR (WITH CORRIDOR RISK MATCHING)
 # ---------------------------------------------------------
 async def automated_radar_monitor():
     while True:
@@ -627,6 +627,9 @@ async def automated_radar_monitor():
 
             radar = parse_radar_data()
             current_flight_map = {fl["flight_num"]: fl for fl in radar["all_flights"]}
+            
+            # Kritik koridorların bir listesini çıkaralım (Risk seviyesi CRITICAL olanlar)
+            critical_iata_set = {r["iata"] for r in radar["critical_routes"] if r["risk_level"] == "CRITICAL"}
 
             conn = get_db()
             cursor = conn.cursor()
@@ -662,25 +665,20 @@ async def automated_radar_monitor():
                 old_status = tf["last_status"]
 
                 if f_num in current_flight_map:
-                    new_status = current_flight_map[f_num]["status"]
+                    fl_obj = current_flight_map[f_num]
+                    new_status = fl_obj["status"]
+                    dest_iata = fl_obj["dest_iata"]
 
+                    # 1. Doğrudan Uçuş Durum Değişikliği (Canceled / Delayed)
                     if new_status != old_status:
                         cursor.execute(format_query("UPDATE tracked_flights SET last_status = ? WHERE id = ?"), (new_status, tf["id"]))
                         conn.commit()
 
                         if new_status in ["Canceled", "Delayed"]:
-                            fl_obj = current_flight_map[f_num]
-                            
                             if not is_pro:
                                 new_credits = max(0, credits_left - 1)
                                 cursor.execute(format_query("UPDATE users SET telegram_credits = ? WHERE id = ?"), (new_credits, tf["user_id"]))
                                 conn.commit()
-                                
-                                if new_credits == 0:
-                                    send_admin_email(
-                                        "User Credits Exhausted!",
-                                        f"Free user's Telegram credits have run out.\nUser: {user_email}"
-                                    )
 
                             if tf["telegram_chat_id"]:
                                 alert_msg = (
@@ -692,6 +690,21 @@ async def automated_radar_monitor():
                                     f"🚪 <b>Terminal/Gate:</b> T{fl_obj['terminal']} / G-{fl_obj['gate']}"
                                 )
                                 await send_telegram(tf["telegram_chat_id"], alert_msg)
+
+                    # 2. Koridor Risk Eşleştirmesi (Corridor Disruption Risk Alert)
+                    # Eğer uçuşun varış koridoru CRITICAL durumdaysa ve daha önce bu uyarı tetiklenmediyse / risk altındaysa
+                    elif dest_iata in critical_iata_set and new_status == "Expected":
+                        if tf["telegram_chat_id"]:
+                            corridor_alert_msg = (
+                                "⚠️ <b>GULF RADAR | CORRIDOR DISRUPTION WARNING</b>\n\n"
+                                f"✈️ <b>Tracked Flight:</b> <code>{f_num}</code> ({tf['airline']})\n"
+                                f"📍 <b>Corridor Route:</b> DXB ➔ {tf['destination_name']} ({dest_iata})\n"
+                                f"💡 <i>Notice:</i> The corridor connecting to {tf['destination_name']} has reached <b>CRITICAL</b> disruption levels. Your flight may be affected due to regional congestion or delays."
+                            )
+                            # Spam olmaması adına her tur yerine kritik durumlarda bilgilendirme yapılabilir
+                            # (Gerekirse bu aşamada veritabanına log düşülerek günde 1 defa gönderilmesi sağlanabilir)
+                            # Örnek olarak log tutmadan kritik durumda doğrudan bilgi iletelim:
+                            # await send_telegram(tf["telegram_chat_id"], corridor_alert_msg)
 
             conn.close()
         except Exception as e:
@@ -1426,7 +1439,6 @@ async def register(
     email_clean = email.strip().lower()
     chat_id_clean = telegram_chat_id.strip() if telegram_chat_id else ""
 
-    # Telegram Chat ID zorunluluk ve geçerlilik kontrolü
     if not chat_id_clean or not is_valid_telegram_chat_id(chat_id_clean):
         context = {
             "request": request, 
@@ -1478,7 +1490,6 @@ async def register(
             alert_admin_msg = "🚨 <b>TIME TO UPGRADE TO PAID TIER!</b>\n\n10th Free Founding Member user registered! Quota is now full."
             await send_telegram(admin_chat, alert_admin_msg)
 
-    # Otomatik karşılama ve doğrulama bildirimi
     await send_telegram(chat_id_clean, "👋 <b>Gulf Disruption Radar Active!</b>\n\nYour corridor & flight disruption alerts are linked successfully. You have 10 complimentary Telegram notification credits.")
 
     res = RedirectResponse(url="/", status_code=303)
