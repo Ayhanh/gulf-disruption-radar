@@ -1421,13 +1421,20 @@ async def register(
     request: Request,
     email: str = Form(...),
     password: str = Form(...),
-    telegram_chat_id: str = Form(None)
+    telegram_chat_id: str = Form(...)
 ):
     email_clean = email.strip().lower()
-    chat_id_clean = telegram_chat_id.strip() if telegram_chat_id else None
+    chat_id_clean = telegram_chat_id.strip() if telegram_chat_id else ""
 
-    if chat_id_clean and not is_valid_telegram_chat_id(chat_id_clean):
-        context = {"request": request, "error": "Invalid Telegram numeric ID.", "message": None, "initial_tab": "register", "free_slots_left": max(0, 10 - get_free_user_count())}
+    # Telegram Chat ID zorunluluk ve geçerlilik kontrolü
+    if not chat_id_clean or not is_valid_telegram_chat_id(chat_id_clean):
+        context = {
+            "request": request, 
+            "error": "Telegram Chat ID is required for live flight alerts. Please enter a valid numeric Chat ID.", 
+            "message": None, 
+            "initial_tab": "register", 
+            "free_slots_left": max(0, 10 - get_free_user_count())
+        }
         return templates.TemplateResponse(request, "auth.html", context)
 
     conn = get_db()
@@ -1462,7 +1469,7 @@ async def register(
 
     send_admin_email(
         "New User Registration",
-        f"A new user registered to the system:\nEmail: {email_clean}"
+        f"A new user registered to the system:\nEmail: {email_clean}\nTelegram Chat ID: {chat_id_clean}"
     )
 
     if free_count + 1 == 10 and is_pro_val == 0:
@@ -1471,8 +1478,8 @@ async def register(
             alert_admin_msg = "🚨 <b>TIME TO UPGRADE TO PAID TIER!</b>\n\n10th Free Founding Member user registered! Quota is now full."
             await send_telegram(admin_chat, alert_admin_msg)
 
-    if chat_id_clean:
-        await send_telegram(chat_id_clean, "👋 <b>Gulf Disruption Radar Active!</b>\n\nYour corridor & flight disruption alerts are linked successfully. You have 10 complimentary Telegram notification credits.")
+    # Otomatik karşılama ve doğrulama bildirimi
+    await send_telegram(chat_id_clean, "👋 <b>Gulf Disruption Radar Active!</b>\n\nYour corridor & flight disruption alerts are linked successfully. You have 10 complimentary Telegram notification credits.")
 
     res = RedirectResponse(url="/", status_code=303)
     res.set_cookie("session_id", session_id, max_age=30*86400, httponly=True, secure=not DEBUG_MODE, samesite="lax")
