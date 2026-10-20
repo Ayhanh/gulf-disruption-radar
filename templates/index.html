@@ -691,7 +691,21 @@
         if ('Notification' in window) {
             Notification.requestPermission().then((permission) => {
                 if (permission === 'granted') {
-                    alert('Browser notifications enabled successfully!');
+                    // Service Worker üzerinden veya doğrudan bildirim fırlat
+                    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                        navigator.serviceWorker.ready.then((reg) => {
+                            reg.showNotification('Gulf Disruption Radar', {
+                                body: '⚡ Live Push Notifications Active! Critical corridor updates will appear here.',
+                                icon: '/static/favicon.svg',
+                                badge: '/static/favicon.svg'
+                            });
+                        });
+                    } else {
+                        new Notification('Gulf Disruption Radar', {
+                            body: '⚡ Live Push Notifications Active! Critical corridor updates will appear here.',
+                            icon: '/static/favicon.svg'
+                        });
+                    }
                 } else {
                     alert('Notification permission was denied.');
                 }
