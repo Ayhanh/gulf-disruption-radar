@@ -535,7 +535,7 @@
                             <span class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">High Capacity</span>
                         </div>
                         <div class="flex items-baseline gap-2 mb-4">
-                            <span class="text-2xl font-extrabold text-slate-900">$29.90</span>
+                            <span class="text-2xl font-extrabold text-slate-900">\$29.90</span>
                             <span class="text-xs text-slate-500">/ month</span>
                         </div>
                         <ul class="text-xs text-slate-700 space-y-2.5 mb-6 font-medium">
@@ -556,10 +556,10 @@
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <a href="https://checkout.dodopayments.com/buy/pdt_0NpxnL1dgAueN5DU0DSP1?quantity=1&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
-                                Monthly ($29.90/mo) →
+                                Monthly (\$29.90/mo) →
                             </a>
                             <a href="https://checkout.dodopayments.com/buy/pdt_0NpxnaKcUvNH5vHJo1D8j?quantity=1&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
-                                Annual ($249/yr) →
+                                Annual (\$249/yr) →
                             </a>
                         </div>
                     </div>
@@ -580,6 +580,15 @@
                 <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
                     Add Gulf Disruption Radar to your home screen for quick 1-tap access. Runs full-screen directly in your browser with zero App Store downloads or updates.
                 </p>
+            </div>
+
+            <!-- PUSH NOTIFICATION PERMISSION NOTICE -->
+            <div class="max-w-md mx-auto bg-slate-800/90 border border-slate-700 rounded-xl p-3 text-xs text-sky-300 flex items-start gap-2 text-left">
+                <span class="text-base">🔔</span>
+                <div>
+                    <strong class="text-white block mb-0.5">Enable Browser Notifications</strong>
+                    To receive instant flight disruption alerts directly to your device center, please allow browser notifications when prompted.
+                </div>
             </div>
 
             <div>
@@ -604,13 +613,21 @@
                     Flight data provided by <a href="https://aerodatabox.com" target="_blank" rel="noopener" class="underline hover:text-slate-600 font-medium">AeroDataBox</a> (15-min cached update frequency). Independent logistics operational tool.
                 </p>
             </div>
-            <div class="flex items-center gap-4 flex-shrink-0">
+            <div class="flex items-center gap-3 flex-shrink-0 flex-wrap">
                 <a href="https://t.me/gulf_disruption_radar_bot" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition shadow-sm">
                     <span>🤖</span> <span>Open Telegram Bot ↗</span>
                 </a>
                 <span class="text-slate-300">&bull;</span>
                 <button type="button" onclick="openSupportModal()" class="hover:text-slate-700 font-semibold text-slate-600 transition flex items-center gap-1">
                     <span>🛠️</span> Support Desk
+                </button>
+                <span class="text-slate-300">&bull;</span>
+                <button type="button" onclick="openInfoModal()" class="hover:text-slate-700 font-semibold text-slate-600 transition flex items-center gap-1">
+                    <span>ℹ️</span> Information
+                </button>
+                <span class="text-slate-300">&bull;</span>
+                <button type="button" onclick="openSettingsModal()" class="hover:text-slate-700 font-semibold text-slate-600 transition flex items-center gap-1">
+                    <span>⚙️</span> Settings
                 </button>
             </div>
         </div>
@@ -619,15 +636,79 @@
     <!-- MODALS -->
     {% include "modals.html" %}
 
+    <!-- INFORMATION & SETTINGS MODALS -->
+    <div id="infoModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 relative space-y-4">
+            <button onclick="closeInfoModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center text-sm font-bold">ℹ️</div>
+                <h3 class="font-bold text-slate-900 text-base">How Gulf Disruption Radar Works</h3>
+            </div>
+            <div class="text-xs text-slate-600 space-y-2.5 leading-relaxed">
+                <p><b>1. Real-Time Air Corridor Monitoring:</b> Our system continuously tracks high-priority flights and airspace routes originating from or connecting through key GCC hubs (DXB, RUH, etc.) via AeroDataBox APIs.</p>
+                <p><b>2. State-Change Push Alerts:</b> Instead of flooding your screen, our automated engine sends instant push notifications and Telegram alerts the moment a flight status flips to <i>Canceled</i> or <i>Delayed</i>.</p>
+                <p><b>3. PWA Installation & Notifications:</b> By installing this web app to your phone or desktop home screen via PWA, you enable native background push capabilities to protect your supply chain in real time.</p>
+            </div>
+            <button onclick="closeInfoModal()" class="w-full bg-slate-900 text-white font-semibold text-xs py-2.5 rounded-xl">Got It</button>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 relative space-y-4">
+            <button onclick="closeSettingsModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm font-bold">⚙️</div>
+                <h3 class="font-bold text-slate-900 text-base">Application & Notification Settings</h3>
+            </div>
+            <div class="text-xs text-slate-600 space-y-3 leading-relaxed">
+                <p>Configure your notification preferences and tracking parameters below:</p>
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold text-slate-800">Browser Push Notifications</span>
+                        <button onclick="requestNotificationPermission()" class="px-3 py-1.5 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700">Enable Permission</button>
+                    </div>
+                    <p class="text-[11px] text-slate-500">Allows desktop/mobile device center to receive urgent disruption alerts instantly.</p>
+                </div>
+            </div>
+            <button onclick="closeSettingsModal()" class="w-full bg-slate-900 text-white font-semibold text-xs py-2.5 rounded-xl">Close Settings</button>
+        </div>
+    </div>
+
     <!-- JAVASCRIPT CONTROLS -->
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js').catch((err) => {
+            navigator.serviceWorker.register('/sw.js').then((reg) => {
+                console.log('ServiceWorker registered:', reg);
+            }).catch((err) => {
                 console.log('SW registration note:', err);
             });
         });
     }
+
+    // Request Browser Notification Permission on load / interaction
+    function requestNotificationPermission() {
+        if ('Notification' in window) {
+            Notification.requestPermission().then((permission) => {
+                if (permission === 'granted') {
+                    alert('Browser notifications enabled successfully!');
+                } else {
+                    alert('Notification permission was denied.');
+                }
+            });
+        } else {
+            alert('This browser does not support desktop notifications.');
+        }
+    }
+
+    // Automatically request permission prompt after user interaction or load
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            if ('Notification' in window && Notification.permission === 'default') {
+                // Optional prompt or user action trigger
+            }
+        }, 3000);
+    });
 
     let deferredPrompt;
     const installBtn = document.getElementById('pwa-install-btn');
@@ -661,6 +742,9 @@
         }
 
         installBtn.addEventListener('click', async () => {
+            // Also request notification permission when clicking install/setup
+            requestNotificationPermission();
+
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
@@ -676,6 +760,20 @@
                 alert("To install Gulf Disruption Radar, open your browser menu (⋮ or Share) and select 'Add to Home screen' or 'Install App'.");
             }
         });
+    }
+
+    function openInfoModal() {
+        document.getElementById('infoModal').classList.remove('hidden');
+    }
+    function closeInfoModal() {
+        document.getElementById('infoModal').classList.add('hidden');
+    }
+
+    function openSettingsModal() {
+        document.getElementById('settingsModal').classList.remove('hidden');
+    }
+    function closeSettingsModal() {
+        document.getElementById('settingsModal').classList.add('hidden');
     }
 
     function openAllFlightsModal() {
@@ -797,6 +895,8 @@
             closeAllFlightsModal();
             closeFlightModal();
             closeSupportModal();
+            closeInfoModal();
+            closeSettingsModal();
         }
     });
     </script>
