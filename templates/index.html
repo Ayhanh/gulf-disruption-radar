@@ -654,25 +654,32 @@
     </div>
 
     <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 relative space-y-4">
-            <button onclick="closeSettingsModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm font-bold">⚙️</div>
-                <h3 class="font-bold text-slate-900 text-base">Application & Notification Settings</h3>
-            </div>
-            <div class="text-xs text-slate-600 space-y-3 leading-relaxed">
-                <p>Configure your notification preferences and tracking parameters below:</p>
-                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="font-semibold text-slate-800">Browser Push Notifications</span>
-                        <button onclick="requestNotificationPermission()" class="px-3 py-1.5 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700">Enable Permission</button>
-                    </div>
-                    <p class="text-[11px] text-slate-500">Allows desktop/mobile device center to receive urgent disruption alerts instantly.</p>
+            <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 relative space-y-4">
+                <button onclick="closeSettingsModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-sm font-bold">⚙️</div>
+                    <h3 class="font-bold text-slate-900 text-base">Application & Notification Settings</h3>
                 </div>
+                <div class="text-xs text-slate-600 space-y-3 leading-relaxed">
+                    <p>Configure your notification preferences and tracking parameters below:</p>
+                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="font-semibold text-slate-800">Browser Push Notifications</span>
+                            <button onclick="requestNotificationPermission()" class="px-3 py-1.5 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Enable Permission</button>
+                        </div>
+                        <p class="text-[11px] text-slate-500">Allows desktop/mobile device center to receive urgent disruption alerts instantly.</p>
+                        
+                        <!-- iOS ve Do Not Disturb için Eklenen Sade Bilgilendirme Kutusu -->
+                        <div class="pt-2 border-t border-slate-200 text-[11px] text-slate-500 space-y-1">
+                            <p>💡 <b>Quick Tips for Mobile:</b></p>
+                            <p>• <b>iOS / iPhone:</b> Please ensure the app is added to your home screen via Safari first, then open it from the icon to enable notifications.</p>
+                            <p>• <b>Device Modes:</b> Ensure <i>Do Not Disturb</i> or <i>Focus Mode</i> is turned off to receive real-time pop-up alerts.</p>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="closeSettingsModal()" class="w-full bg-slate-900 text-white font-semibold text-xs py-2.5 rounded-xl">Close Settings</button>
             </div>
-            <button onclick="closeSettingsModal()" class="w-full bg-slate-900 text-white font-semibold text-xs py-2.5 rounded-xl">Close Settings</button>
         </div>
-    </div>
 
     <!-- JAVASCRIPT CONTROLS -->
     <script>
