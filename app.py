@@ -648,7 +648,6 @@ async def automated_radar_monitor():
             radar = parse_radar_data()
             current_flight_map = {fl["flight_num"]: fl for fl in radar["all_flights"]}
             
-            # Kritik koridorların bir listesini çıkaralım (Risk seviyesi CRITICAL olanlar)
             critical_iata_set = {r["iata"] for r in radar["critical_routes"] if r["risk_level"] == "CRITICAL"}
 
             conn = get_db()
@@ -666,7 +665,6 @@ async def automated_radar_monitor():
                 is_pro = tf["is_pro"]
                 credits_left = tf["telegram_credits"]
                 created_at = tf["created_at"]
-                user_email = tf["email"]
 
                 if not is_pro:
                     if credits_left <= 0:
@@ -689,7 +687,6 @@ async def automated_radar_monitor():
                     new_status = fl_obj["status"]
                     dest_iata = fl_obj["dest_iata"]
 
-                    # 1. Doğrudan Uçuş Durum Değişikliği (Canceled / Delayed)
                     if new_status != old_status:
                         cursor.execute(format_query("UPDATE tracked_flights SET last_status = ? WHERE id = ?"), (new_status, tf["id"]))
                         conn.commit()
@@ -711,20 +708,9 @@ async def automated_radar_monitor():
                                 )
                                 await send_telegram(tf["telegram_chat_id"], alert_msg)
 
-                    # 2. Koridor Risk Eşleştirmesi (Corridor Disruption Risk Alert)
-                    # Eğer uçuşun varış koridoru CRITICAL durumdaysa ve daha önce bu uyarı tetiklenmediyse / risk altındaysa
                     elif dest_iata in critical_iata_set and new_status == "Expected":
                         if tf["telegram_chat_id"]:
-                            corridor_alert_msg = (
-                                "⚠️ <b>GULF RADAR | CORRIDOR DISRUPTION WARNING</b>\n\n"
-                                f"✈️ <b>Tracked Flight:</b> <code>{f_num}</code> ({tf['airline']})\n"
-                                f"📍 <b>Corridor Route:</b> DXB ➔ {tf['destination_name']} ({dest_iata})\n"
-                                f"💡 <i>Notice:</i> The corridor connecting to {tf['destination_name']} has reached <b>CRITICAL</b> disruption levels. Your flight may be affected due to regional congestion or delays."
-                            )
-                            # Spam olmaması adına her tur yerine kritik durumlarda bilgilendirme yapılabilir
-                            # (Gerekirse bu aşamada veritabanına log düşülerek günde 1 defa gönderilmesi sağlanabilir)
-                            # Örnek olarak log tutmadan kritik durumda doğrudan bilgi iletelim:
-                            # await send_telegram(tf["telegram_chat_id"], corridor_alert_msg)
+                            pass
 
             conn.close()
         except Exception as e:
@@ -1263,13 +1249,15 @@ async def index(request: Request, q: Optional[str] = None):
             remaining_searches = max(0, search_limit - daily_search_count)
             search_limit_reached = daily_search_count >= search_limit
 
-    # ... geri kalan kodlar aynı ...
-
     radar_data = parse_radar_data(search_query=q or "")
 
     watchlist = []
     tracked_flights = []
     watchlist_limit_reached = False
+    
+    # Şablon için is_pro değişkenini güvenli şekilde tanımlıyoruz
+    is_pro = bool(user and user.get("is_pro") == 1)
+
     if user:
         conn = get_db()
         cursor = conn.cursor()
