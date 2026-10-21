@@ -438,11 +438,31 @@ def get_current_user(request: Request):
         return None
 
     user_dict = dict(user)
-    if user_dict["email"].lower() in ADMIN_EMAILS:
+    created_at = user_dict.get("created_at")
+    
+    # 3 Günlük (72 saat) Deneme Süresi Kontrolü
+    trial_active = False
+    if created_at:
+        try:
+            if isinstance(created_at, str):
+                reg_date = datetime.fromisoformat(created_at)
+            else:
+                reg_date = created_at
+            
+            if datetime.now() - reg_date <= timedelta(days=3):
+                trial_active = True
+        except Exception:
+            pass
+
+    # Admin, Gerçek Pro veya 3 Günlük Trial Süresindeyse PRO yetkileri verilir
+    if user_dict["email"].lower() in ADMIN_EMAILS or user_dict.get("is_pro") == 1 or trial_active:
         user_dict["is_pro"] = 1
-        user_dict["is_admin"] = True
+        user_dict["is_trial"] = trial_active
     else:
-        user_dict["is_admin"] = False
+        user_dict["is_pro"] = 0
+        user_dict["is_trial"] = False
+
+    user_dict["is_admin"] = user_dict["email"].lower() in ADMIN_EMAILS
     return user_dict
 
 def get_daily_search_count(identifier: str) -> int:
@@ -1219,12 +1239,15 @@ async def get_sw():
 async def index(request: Request, q: Optional[str] = None):
     user = get_current_user(request)
     client_ip = request.client.host if request.client else "127.0.0.1"
-    is_pro = bool(user and user.get("is_pro"))
-    identifier = f"user_{user['id']}" if user else f"guest_{client_ip}"
     
+    # Gerçek PRO mu yoksa sadece Trial aşamasında mı?
+    real_pro = bool(user and user.get("is_pro") == 1 and not user.get("is_trial"))
+    
+    identifier = f"user_{user['id']}" if user else f"guest_{client_ip}"
     daily_search_count = get_daily_search_count(identifier)
 
-    if is_pro:
+    # Arama limiti: Gerçek Pro 100/gün, Trial veya Free kullanıcılar 5/gün
+    if real_pro:
         search_limit = 100
         search_limit_reached = False
         remaining_searches = "100/day"
@@ -1235,10 +1258,12 @@ async def index(request: Request, q: Optional[str] = None):
 
     if q and not search_limit_reached:
         increment_search_count(identifier)
-        if not is_pro:
+        if not real_pro:
             daily_search_count += 1
             remaining_searches = max(0, search_limit - daily_search_count)
             search_limit_reached = daily_search_count >= search_limit
+
+    # ... geri kalan kodlar aynı ...
 
     radar_data = parse_radar_data(search_query=q or "")
 
