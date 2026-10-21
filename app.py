@@ -379,28 +379,47 @@ def increment_counter(key: str, amount: int = 1):
     if key == "api_requests_this_month":
         current_val = get_counter("api_requests_this_month")
         
+        conn2 = get_db()
+        cursor2 = conn2.cursor()
+        
         if current_val >= 1120:
-            cursor.execute(format_query("SELECT val FROM app_counters WHERE key = 'api_70_sent'"))
-            sent_70 = cursor.fetchone()
+            cursor2.execute(format_query("SELECT val FROM app_counters WHERE key = ?"), ('api_70_sent',))
+            sent_70 = cursor2.fetchone()
             if not sent_70 or sent_70["val"] == 0:
                 send_admin_email(
                     "API Quota Exceeded 70% Threshold!",
                     f"Monthly RapidAPI consumption exceeded 1,120 limit.\nCurrent Usage: {current_val} / 1,600"
                 )
-                cursor.execute(format_query("INSERT OR REPLACE INTO app_counters (key, val, last_reset) VALUES ('api_70_sent', 1, ?)"), (current_month_str,))
-                conn.commit()
+                if USE_PG:
+                    cursor2.execute("""
+                        INSERT INTO app_counters (key, val, last_reset) VALUES ('api_70_sent', 1, %s)
+                        ON CONFLICT (key) DO UPDATE SET val = EXCLUDED.val, last_reset = EXCLUDED.last_reset
+                    """, (current_month_str,))
+                else:
+                    cursor2.execute("""
+                        INSERT OR REPLACE INTO app_counters (key, val, last_reset) VALUES ('api_70_sent', 1, ?)
+                    """, (current_month_str,))
+                conn2.commit()
 
         if current_val >= 1440:
-            cursor.execute(format_query("SELECT val FROM app_counters WHERE key = 'api_90_sent'"))
-            sent_90 = cursor.fetchone()
+            cursor2.execute(format_query("SELECT val FROM app_counters WHERE key = ?"), ('api_90_sent',))
+            sent_90 = cursor2.fetchone()
             if not sent_90 or sent_90["val"] == 0:
                 send_admin_email(
                     "CRITICAL: API Quota Reached 90%!",
                     f"Monthly RapidAPI consumption reached 1,440 limit! Please take action.\nCurrent Usage: {current_val} / 1,600"
                 )
-                cursor.execute(format_query("INSERT OR REPLACE INTO app_counters (key, val, last_reset) VALUES ('api_90_sent', 1, ?)"), (current_month_str,))
-                conn.commit()
-    conn.close()
+                if USE_PG:
+                    cursor2.execute("""
+                        INSERT INTO app_counters (key, val, last_reset) VALUES ('api_90_sent', 1, %s)
+                        ON CONFLICT (key) DO UPDATE SET val = EXCLUDED.val, last_reset = EXCLUDED.last_reset
+                    """, (current_month_str,))
+                else:
+                    cursor2.execute("""
+                        INSERT OR REPLACE INTO app_counters (key, val, last_reset) VALUES ('api_90_sent', 1, ?)
+                    """, (current_month_str,))
+                conn2.commit()
+        conn2.close()
 
 # ---------------------------------------------------------
 # HASHING & SECURITY
@@ -527,12 +546,10 @@ def fetch_live_airport_data(iata_code="DXB"):
     if not RAPIDAPI_KEY:
         return False, "RapidAPI Key is not defined."
     
-    # 1. 15 Dakika Cache Kontrolü
+    # 15 Dakika Cache Kontrolü
     if DATA_CACHE_FILE.exists():
         file_age_seconds = time.time() - DATA_CACHE_FILE.stat().st_mtime
-        # 15 dakika = 900 saniye
         if file_age_seconds < 900:
-            print(f"🔄 Using local cache (Age: {int(file_age_seconds)}s). RapidAPI not called.")
             return True, "Using cached FIDS data."
 
     url = f"https://aerodatabox.p.rapidapi.com/flights/airports/iata/{iata_code}"
@@ -554,7 +571,7 @@ def fetch_live_airport_data(iata_code="DXB"):
             with open(DATA_CACHE_FILE, "w", encoding="utf-8") as f:
                 f.write(res_text)
             
-            # Veritabanına geçmiş kayıtları (flights_history) ekleyelim
+            # Veritabanına geçmiş kayıtları ekle ve eski verileri temizle
             try:
                 data = json.loads(res_text)
                 departures = data.get("departures", [])
@@ -577,6 +594,11 @@ def fetch_live_airport_data(iata_code="DXB"):
                         INSERT INTO flights_history (flight_num, airline, dest_iata, dest_name, status, scheduled_time, terminal, gate, aircraft_model, recorded_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     """), (fl_num, airline, dest_iata, dest_name, status, sched_time, terminal, gate, ac_model))
+                
+                # 24 saatten eski kayıtları temizleme mekanizması
+                cutoff_time = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+                cursor.execute(format_query("DELETE FROM flights_history WHERE recorded_at < ?"), (cutoff_time,))
+
                 conn.commit()
                 conn.close()
             except Exception as db_err:
