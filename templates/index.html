@@ -52,7 +52,7 @@
                         {% endif %}
                         {% if user.is_trial %}
                             <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                                ⚡ 3-DAY PRO TRIAL
+                                ⚡ 7-DAY PRO TRIAL
                             </span>
                         {% elif is_pro %}
                             <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
@@ -74,7 +74,7 @@
                         Sign In
                     </a>
                     <a href="/auth?mode=register" class="text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5">
-                        <span>✨</span> Create Free Account (3-Day Pro Trial Active)
+                        <span>✨</span> Create Free Account (7-Day Pro Trial Active)
                     </a>
                 {% endif %}
             </div>
@@ -456,30 +456,30 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                <!-- FREE TIER CARD WITH 3-DAY PRO TRIAL INFO -->
+                <!-- FREE TIER CARD WITH 7-DAY PRO TRIAL INFO -->
                 <div class="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between shadow-sm">
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-bold text-slate-900">3-Day Pro Trial + Free Tier</span>
+                            <span class="text-sm font-bold text-slate-900">7-Day Pro Trial + Free Tier</span>
                             <span class="text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full">
-                                ✨ 3-Day Pro Pass
+                                ✨ 7-Day Pro Pass
                             </span>
                         </div>
                         <div class="text-2xl font-extrabold text-slate-900 mb-4">$0 <span class="text-xs font-normal text-slate-500">/ forever</span></div>
                         
                         <ul class="text-xs text-slate-600 space-y-2.5 mb-6">
                             <li class="flex items-center gap-2 text-emerald-800 font-semibold bg-emerald-50 p-2 rounded-lg border border-emerald-200">
-                                <span>🎁</span> <span><b>First 3 Days:</b> Test All Pro Features (PDF Reports & 50 Tracked Routes)</span>
+                                <span>🎁</span> <span><b>First 7 Days:</b> Test All Pro Features (PDF Reports & 50 Tracked Routes)</span>
                             </li>
                             <li class="flex items-center gap-2"><span>✓</span> <b>5 Daily Queries</b> <span class="text-[10px] text-slate-400">(API Quota Safe)</span></li>
-                            <li class="flex items-center gap-2"><span>✓</span> 3 Active Watchlists <span class="text-[10px] text-slate-400">(50 during 3-day trial)</span></li>
+                            <li class="flex items-center gap-2"><span>✓</span> 3 Active Watchlists <span class="text-[10px] text-slate-400">(50 during 7-day trial)</span></li>
                             <li class="flex items-center gap-2"><span>✓</span> 10 Lifetime Telegram Alert Credits</li>
                         </ul>
                     </div>
                     {% if not user %}
                         {% if free_slots_left > 0 %}
                             <a href="/auth?mode=register" class="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-3 rounded-xl shadow-md transition">
-                                Start 3-Day Pro Trial (Free) — {{ free_slots_left }} Seats Left
+                                Start 7-Day Pro Trial (Free) — {{ free_slots_left }} Seats Left
                             </a>
                         {% else %}
                             <div class="w-full text-center bg-rose-50 text-rose-700 font-semibold text-xs py-2.5 rounded-xl border border-rose-200">
@@ -504,7 +504,7 @@
                             <span class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">High Capacity</span>
                         </div>
                         <div class="flex items-baseline gap-2 mb-4">
-                            <span class="text-2xl font-extrabold text-slate-900">$29.90</span>
+                            <span class="text-2xl font-extrabold text-slate-900">\$29.90</span>
                             <span class="text-xs text-slate-500">/ month</span>
                         </div>
                         <ul class="text-xs text-slate-700 space-y-2.5 mb-6 font-medium">
@@ -525,10 +525,10 @@
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <a href="https://checkout.dodopayments.com/buy/pdt_0NpxnL1dgAueN5DU0DSP1?quantity=1&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
-                                Monthly ($29.90/mo) →
+                                Monthly (\$29.90/mo) →
                             </a>
                             <a href="https://checkout.dodopayments.com/buy/pdt_0NpxnaKcUvNH5vHJo1D8j?quantity=1&redirect_url=https://gulf-disruption-radar.onrender.com%2F%3Fpayment%3Dsuccess" target="_blank" class="block w-full py-3 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-center shadow-md transition-all text-xs">
-                                Annual ($249/yr) →
+                                Annual (\$249/yr) →
                             </a>
                         </div>
                     </div>
@@ -585,6 +585,10 @@
             <div class="flex items-center gap-3 flex-shrink-0 flex-wrap">
                 <a href="https://t.me/gulf_disruption_radar_bot" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition shadow-sm">
                     <span>🤖</span> <span>Open Telegram Bot ↗</span>
+                </a>
+                <span class="text-slate-300">&bull;</span>
+                <a href="/security" class="hover:text-slate-700 font-semibold text-slate-600 transition flex items-center gap-1">
+                    <span>🛡️</span> Security & Trust
                 </a>
                 <span class="text-slate-300">&bull;</span>
                 <button type="button" onclick="openSupportModal()" class="hover:text-slate-700 font-semibold text-slate-600 transition flex items-center gap-1">

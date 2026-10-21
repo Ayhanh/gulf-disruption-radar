@@ -499,7 +499,7 @@ def get_current_user(request: Request):
             else:
                 reg_date = created_at
             
-            if datetime.now() - reg_date <= timedelta(days=3):
+            if datetime.now() - reg_date <= timedelta(days=7):
                 trial_active = True
         except Exception:
             pass
@@ -1763,6 +1763,20 @@ async def support_ticket_api(request: Request):
         support_msg = f"🛠️ <b>GULF RADAR SUPPORT</b>\n\nFrom: {user_email}\nMessage: {msg}"
         await send_telegram(admin_chat, support_msg)
     return {"success": True}
+
+# ---------------------------------------------------------
+# TRUST CENTER & SECURITY PAGE
+# ---------------------------------------------------------
+@app.get("/security", response_class=HTMLResponse)
+async def security_page(request: Request):
+    user = get_current_user(request)
+    context = {
+        "request": request,
+        "user": user,
+        "free_slots_left": max(0, 10 - get_free_user_count())
+    }
+    return templates.TemplateResponse(request=request, name="security.html", context=context)
+
 
 if __name__ == "__main__":
     import uvicorn
