@@ -13,6 +13,7 @@ from collections import defaultdict
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import time
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, HTTPException, Request
@@ -219,6 +220,21 @@ def init_db():
                 last_reset DATE
             );
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS flights_history (
+                id SERIAL PRIMARY KEY,
+                flight_num TEXT,
+                airline TEXT,
+                dest_iata TEXT,
+                dest_name TEXT,
+                status TEXT,
+                scheduled_time TEXT,
+                terminal TEXT,
+                gate TEXT,
+                aircraft_model TEXT,
+                recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
     else:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -288,6 +304,21 @@ def init_db():
                 key TEXT PRIMARY KEY,
                 val INTEGER DEFAULT 0,
                 last_reset DATE
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS flights_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                flight_num TEXT,
+                airline TEXT,
+                dest_iata TEXT,
+                dest_name TEXT,
+                status TEXT,
+                scheduled_time TEXT,
+                terminal TEXT,
+                gate TEXT,
+                aircraft_model TEXT,
+                recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
 
@@ -489,12 +520,21 @@ def increment_search_count(identifier: str):
     conn.close()
 
 # ---------------------------------------------------------
-# LIVE AIRPORT & FIDS ENGINE
+# LIVE AIRPORT & FIDS ENGINE (WITH 15-MIN CACHE & HISTORY LOGGING)
 # ---------------------------------------------------------
 def fetch_live_airport_data(iata_code="DXB"):
+    """Fetches live data from AeroDataBox only if the last fetch was more than 15 minutes ago, and logs snapshots into flights_history."""
     if not RAPIDAPI_KEY:
         return False, "RapidAPI Key is not defined."
     
+    # 1. 15 Dakika Cache Kontrolü
+    if DATA_CACHE_FILE.exists():
+        file_age_seconds = time.time() - DATA_CACHE_FILE.stat().st_mtime
+        # 15 dakika = 900 saniye
+        if file_age_seconds < 900:
+            print(f"🔄 Using local cache (Age: {int(file_age_seconds)}s). RapidAPI not called.")
+            return True, "Using cached FIDS data."
+
     url = f"https://aerodatabox.p.rapidapi.com/flights/airports/iata/{iata_code}"
     headers = {"X-RapidAPI-Key": RAPIDAPI_KEY, "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com"}
     params = {
@@ -510,8 +550,38 @@ def fetch_live_airport_data(iata_code="DXB"):
         res = requests.get(url, headers=headers, params=params, timeout=15)
         increment_counter("api_requests_this_month", 1)
         if res.status_code == 200:
+            res_text = res.text
             with open(DATA_CACHE_FILE, "w", encoding="utf-8") as f:
-                f.write(res.text)
+                f.write(res_text)
+            
+            # Veritabanına geçmiş kayıtları (flights_history) ekleyelim
+            try:
+                data = json.loads(res_text)
+                departures = data.get("departures", [])
+                conn = get_db()
+                cursor = conn.cursor()
+                for dep in departures:
+                    fl_num = dep.get("number", "N/A")
+                    airline = dep.get("airline", {}).get("name", "Unknown Airline")
+                    arr_info = dep.get("arrival", {}).get("airport", {})
+                    dest_iata = arr_info.get("iata", "N/A")
+                    dest_name = arr_info.get("name", "Unknown")
+                    status = dep.get("status", "Expected")
+                    dep_info = dep.get("departure", {})
+                    sched_time = dep_info.get("scheduledTime", {}).get("local", "")
+                    terminal = dep_info.get("terminal", "-")
+                    gate = dep_info.get("gate", "-")
+                    ac_model = dep.get("aircraft", {}).get("model", "Commercial Jet")
+
+                    cursor.execute(format_query("""
+                        INSERT INTO flights_history (flight_num, airline, dest_iata, dest_name, status, scheduled_time, terminal, gate, aircraft_model, recorded_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    """), (fl_num, airline, dest_iata, dest_name, status, sched_time, terminal, gate, ac_model))
+                conn.commit()
+                conn.close()
+            except Exception as db_err:
+                print(f"[History Log Error]: {db_err}")
+
             return True, f"Live {iata_code} FIDS data synchronized."
         return False, f"API Error ({res.status_code})"
     except Exception as e:
@@ -606,6 +676,49 @@ def parse_radar_data(search_query=""):
     if search_query:
         q = search_query.lower()
         all_flights = [fl for fl in all_flights if q in fl["dest_name"].lower() or q in fl["dest_iata"].lower() or q in fl["airline"].lower() or q in fl["flight_num"].lower()]
+
+        # Eğer canlı cache'de bulunamadıysa flights_history tablosundan geçmiş kayıtları sorgulayalım
+        if not all_flights:
+            try:
+                conn = get_db()
+                cursor = conn.cursor()
+                query_str = format_query("""
+                    SELECT flight_num, airline, dest_iata, dest_name, status, scheduled_time, terminal, gate, aircraft_model 
+                    FROM flights_history 
+                    WHERE lower(flight_num) LIKE ? OR lower(airline) LIKE ? OR lower(dest_name) LIKE ? OR lower(dest_iata) LIKE ?
+                    ORDER BY recorded_at DESC LIMIT 10
+                """)
+                cursor.execute(query_str, (f'%{q}%', f'%{q}%', f'%{q}%', f'%{q}%'))
+                history_rows = cursor.fetchall()
+                conn.close()
+
+                for hr in history_rows:
+                    all_flights.append({
+                        "flight_num": hr["flight_num"],
+                        "call_sign": "-",
+                        "airline": hr["airline"],
+                        "dest_name": hr["dest_name"],
+                        "dest_iata": hr["dest_iata"],
+                        "dest_icao": "-",
+                        "dest_country": "-",
+                        "dest_tz": "-",
+                        "coords": "-",
+                        "time": hr["scheduled_time"][-5:] if hr["scheduled_time"] else "-",
+                        "sched_local": hr["scheduled_time"],
+                        "sched_utc": "-",
+                        "revised_time": "-",
+                        "runway_time": "-",
+                        "terminal": hr["terminal"],
+                        "gate": hr["gate"],
+                        "runway": "-",
+                        "status": hr["status"],
+                        "aircraft_model": hr["aircraft_model"],
+                        "aircraft_reg": "-",
+                        "aircraft_modes": "-",
+                        "is_cargo": False
+                    })
+            except Exception as hist_err:
+                print(f"[History Query Error]: {hist_err}")
 
     all_flights = sorted(all_flights, key=lambda x: x.get("time", ""))
 
@@ -1226,13 +1339,11 @@ async def index(request: Request, q: Optional[str] = None):
     user = get_current_user(request)
     client_ip = request.client.host if request.client else "127.0.0.1"
     
-    # Gerçek PRO mu yoksa sadece Trial aşamasında mı?
     real_pro = bool(user and user.get("is_pro") == 1 and not user.get("is_trial"))
     
     identifier = f"user_{user['id']}" if user else f"guest_{client_ip}"
     daily_search_count = get_daily_search_count(identifier)
 
-    # Arama limiti: Gerçek Pro 100/gün, Trial veya Free kullanıcılar 5/gün
     if real_pro:
         search_limit = 100
         search_limit_reached = False
@@ -1255,7 +1366,6 @@ async def index(request: Request, q: Optional[str] = None):
     tracked_flights = []
     watchlist_limit_reached = False
     
-    # Şablon için is_pro değişkenini güvenli şekilde tanımlıyoruz
     is_pro = bool(user and user.get("is_pro") == 1)
 
     if user:
