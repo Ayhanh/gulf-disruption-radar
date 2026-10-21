@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security & Trust Center | Gulf Disruption Radar</title>
+
+    <!-- FAVICON -->
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased">
+
+    <!-- NAVBAR -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                    📡
+                </div>
+                <div>
+                    <span class="font-bold text-base text-slate-900 block leading-tight">Gulf Disruption Radar</span>
+                    <span class="text-[11px] text-slate-500 font-medium">Trust Center & Security Compliance</span>
+                </div>
+            </a>
+            <a href="/" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-xs font-semibold rounded-xl transition text-slate-700">
+                ← Back to Radar
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-12 flex-1 w-full space-y-8">
+
+        <!-- HEADER SECTION -->
+        <div class="space-y-3">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-800 text-xs font-semibold">
+                <span>🛡️ Enterprise Security & Compliance</span>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Security & Trust Center</h1>
+            <p class="text-sm text-slate-600 leading-relaxed">
+                At Gulf Disruption Radar, we maintain robust operational security standards to safeguard mission-critical aviation telemetry and logistics workflows.
+            </p>
+        </div>
+
+        <!-- 4 PILLARS GRID (SIMPLIFIED & SECURE) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- 1. Data Encryption -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl font-bold">🔒</div>
+                <h3 class="font-bold text-slate-900 text-base">Veri Şifreleme</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Kullanıcı şifreleri ve hassas veriler endüstri standardı şifreleme algoritmaları ile korunur[cite: 1]. Tüm iletişim 256-bit SSL sertifikası ile şifrelenmiştir[cite: 1].
+                </p>
+            </div>
+
+            <!-- 2. Data Source -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
+                <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-xl font-bold">📊</div>
+                <h3 class="font-bold text-slate-900 text-base">Veri Kaynağı</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Uçuş verileri sektör lideri sağlayıcı AeroDataBox API'si üzerinden çekilir[cite: 1]. Operasyonel akışınız kesintisiz ve güvenilir altyapıyla desteklenir.
+                </p>
+            </div>
+
+            <!-- 3. Compliance & Privacy -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl font-bold">📋</div>
+                <h3 class="font-bold text-slate-900 text-base">Gizlilik (GDPR / KVKK)</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Kullanıcı verileri asla üçüncü taraflara satılmaz[cite: 1]. Verileriniz sadece size bildirim göndermek ve platform deneyiminizi iyileştirmek için kullanılır[cite: 1].
+                </p>
+            </div>
+
+            <!-- 4. Payment Security -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl font-bold">💳</div>
+                <h3 class="font-bold text-slate-900 text-base">Ödeme Güvenliği</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Ödemeler Dodo Payments (PCI-DSS uyumlu) üzerinden alınır[cite: 1]. Kredi kartı bilgileriniz sistemimizde asla saklanmaz, doğrudan güvenli ödeme altyapısından işlenir[cite: 1].
+                </p>
+            </div>
+
+        </div>
+
+        <!-- CONTACT SECURITY DESK -->
+        <div class="bg-slate-900 text-white rounded-2xl p-6 shadow-sm border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+                <h4 class="font-bold text-sm text-white">Have enterprise compliance or vendor security inquiries?</h4>
+                <p class="text-xs text-slate-400 mt-0.5">Our engineering and security desk is ready to assist your procurement team.</p>
+            </div>
+            <button type="button" onclick="window.location.href='mailto:ayhan.hakyemez@gmail.com?subject=Enterprise%20Security%20Inquiry'" class="whitespace-nowrap bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs py-2.5 px-5 rounded-xl transition">
+                Contact Security Desk ✉️
+            </button>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-200 bg-white py-6 text-xs text-slate-500 text-center">
+        &copy; Gulf Disruption Radar Trust Center. Enterprise Air Freight Intelligence.
+    </footer>
+
+</body>
+</html>
