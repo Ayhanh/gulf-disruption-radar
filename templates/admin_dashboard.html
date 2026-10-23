@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard & Observability | Gulf Disruption Radar</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased">
+
+    <!-- NAVBAR -->
+    <header class="bg-slate-950 border-b border-slate-800 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-lg shadow-sm">
+                    🛡️
+                </div>
+                <div>
+                    <span class="font-bold text-base text-white block leading-tight">Admin Observability Panel</span>
+                    <span class="text-[11px] text-slate-400 font-medium">Gulf Disruption Radar Control Center</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="/" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-xl transition text-slate-300">
+                    ← Back to Radar
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
+
+        <!-- SYSTEM HEALTH & METRICS CARDS -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Telegram Bot Health -->
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-sm space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Telegram Bot Status</p>
+                <div class="flex items-center gap-2 mt-1">
+                    {% if bot_healthy %}
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="text-lg font-bold text-emerald-400">Online & Active</span>
+                    {% else %}
+                        <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                        <span class="text-lg font-bold text-rose-400">Offline / Error</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Stale Data Status -->
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-sm space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cache & Data Freshness</p>
+                <div class="flex items-center gap-2 mt-1">
+                    {% if is_stale %}
+                        <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                        <span class="text-sm font-bold text-amber-400">{{ stale_msg }}</span>
+                    {% else %}
+                        <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                        <span class="text-sm font-bold text-emerald-400">Fresh (Under 30 min)</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- API Quota Consumption -->
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-sm space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Monthly API Consumption</p>
+                <div class="flex items-baseline justify-between mt-1">
+                    <span class="text-2xl font-extrabold text-white">{{ api_usage }}</span>
+                    <span class="text-xs text-slate-400">/ 1,600 Limit</span>
+                </div>
+                <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden mt-1">
+                    <div class="bg-sky-500 h-full" style="width: {{ (api_usage / 1600) * 100 }}%"></div>
+                </div>
+            </div>
+
+            <!-- Total Users -->
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-sm space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Registered Users</p>
+                <p class="text-2xl font-extrabold text-white mt-1">{{ users|length }}</p>
+            </div>
+        </div>
+
+        <!-- CRM & USER MANAGEMENT TABLE -->
+        <section class="bg-slate-800/60 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+            <h3 class="text-xs font-bold tracking-wider uppercase text-slate-400">User Management (CRM)</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400 uppercase text-[10px]">
+                            <th class="py-3">Email</th>
+                            <th class="py-3">Role / Status</th>
+                            <th class="py-3">Registered At</th>
+                            <th class="py-3">Telegram Chat ID</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/60">
+                        {% for u in users %}
+                        <tr>
+                            <td class="py-3 font-semibold text-white">{{ u.email }}</td>
+                            <td class="py-3">
+                                {% if u.is_admin %}
+                                <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">Admin</span>
+                                {% elif u.is_pro %}
+                                <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">Standard Pro</span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded bg-slate-700 text-slate-300">Free / Trial</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 text-slate-400">{{ u.created_at }}</td>
+                            <td class="py-3 font-mono text-slate-300">{{ u.telegram_chat_id or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- API REQUEST LOGS -->
+        <section class="bg-slate-800/60 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+            <h3 class="text-xs font-bold tracking-wider uppercase text-slate-400">Recent API Request Logs (Observability)</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse font-mono">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400 uppercase text-[10px]">
+                            <th class="py-3">Endpoint</th>
+                            <th class="py-3">Status</th>
+                            <th class="py-3">Response Time</th>
+                            <th class="py-3">Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/60">
+                        {% for log in api_logs %}
+                        <tr>
+                            <td class="py-2.5 text-slate-200">{{ log.endpoint }}</td>
+                            <td class="py-2.5">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ 'bg-emerald-500/20 text-emerald-300' if log.status_code == 200 else 'bg-rose-500/20 text-rose-300' }}">
+                                    {{ log.status_code }}
+                                </span>
+                            </td>
+                            <td class="py-2.5 text-slate-400">{{ "%.2f"|format(log.response_time_ms) }} ms</td>
+                            <td class="py-2.5 text-slate-500">{{ log.created_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- ERROR LOGS & ADMIN ACCESS LOGS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- System Errors -->
+            <section class="bg-slate-800/60 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+                <h3 class="text-xs font-bold tracking-wider uppercase text-slate-400">System Error Logs</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-700 text-slate-400 uppercase text-[10px]">
+                                <th class="py-2">Module</th>
+                                <th class="py-2">Error</th>
+                                <th class="py-2">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-700/60">
+                            {% for err in error_logs %}
+                            <tr>
+                                <td class="py-2 font-mono text-rose-400">{{ err.module }}</td>
+                                <td class="py-2 text-slate-300">{{ err.error_message }}</td>
+                                <td class="py-2 text-slate-500">{{ err.occurred_at }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="py-4 text-center text-slate-500 italic">No system errors recorded.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Admin Access Logs -->
+            <section class="bg-slate-800/60 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
+                <h3 class="text-xs font-bold tracking-wider uppercase text-slate-400">Admin Access Audit Log</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-700 text-slate-400 uppercase text-[10px]">
+                                <th class="py-2">Admin Email</th>
+                                <th class="py-2">IP Address</th>
+                                <th class="py-2">Accessed At</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-700/60">
+                            {% for acc in access_logs %}
+                            <tr>
+                                <td class="py-2 text-slate-200">{{ acc.admin_email }}</td>
+                                <td class="py-2 font-mono text-sky-400">{{ acc.ip_address }}</td>
+                                <td class="py-2 text-slate-500">{{ acc.accessed_at }}</td>
+                                
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-6 text-xs text-slate-500 text-center">
+        &copy; Gulf Disruption Radar Admin Observability. Secure Enterprise Operations.
+    </footer>
+
+</body>
+</html>
