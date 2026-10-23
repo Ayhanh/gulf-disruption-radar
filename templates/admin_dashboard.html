@@ -31,7 +31,40 @@
         </div>
     </header>
 
+    <!-- ADMIN SYNC NOW BUTTON -->
+    <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 mb-4 flex items-center justify-between">
+        <div>
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin Force Sync</p>
+            <p class="text-sm text-slate-200">15 dakikalık önbelleği bypass ederek anlık canlı AeroDataBox FIDS verisi çeker.</p>
+        </div>
+        <form action="/admin/sync-now" method="POST" class="flex items-center gap-2">
+            <button type="submit"
+                    class="bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow-md shadow-sky-500/20 flex items-center gap-1.5">
+                <span>🔄</span> <span>Sync Now</span>
+            </button>
+            <span id="sync-result" class="text-xs text-slate-400"></span>
+        </form>
+    </div>
+
     <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
+
+        <!-- SYSTEM HEALTH WARNING BANNER (Stale Data / Bot Down) -->
+        {% if is_stale or not bot_healthy %}
+        <div class="bg-rose-900/20 border border-rose-500/30 rounded-2xl p-4 mb-4">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-rose-300 uppercase tracking-wider">⚠️ UYARI</span>
+            </div>
+            <ul class="text-sm text-rose-200 mt-1 space-y-1 list-disc list-inside">
+                {% if is_stale %}
+                <li>{{ stale_msg }}</li>
+                {% endif %}
+                {% if not bot_healthy %}
+                <li>Telegram Bot bağlantısı kesildi. Uyarılar gönderilemeyebilir.</li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
 
         <!-- SYSTEM HEALTH & METRICS CARDS -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -40,11 +73,11 @@
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Telegram Bot Status</p>
                 <div class="flex items-center gap-2 mt-1">
                     {% if bot_healthy %}
-                        <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span class="text-lg font-bold text-emerald-400">Online & Active</span>
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-lg font-bold text-emerald-400">Online & Active</span>
                     {% else %}
-                        <span class="w-3 h-3 rounded-full bg-rose-500"></span>
-                        <span class="text-lg font-bold text-rose-400">Offline / Error</span>
+                    <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                    <span class="text-lg font-bold text-rose-400">Offline / Error</span>
                     {% endif %}
                 </div>
             </div>
@@ -54,11 +87,11 @@
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cache & Data Freshness</p>
                 <div class="flex items-center gap-2 mt-1">
                     {% if is_stale %}
-                        <span class="w-3 h-3 rounded-full bg-amber-500"></span>
-                        <span class="text-sm font-bold text-amber-400">{{ stale_msg }}</span>
+                    <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                    <span class="text-sm font-bold text-amber-400">{{ stale_msg }}</span>
                     {% else %}
-                        <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-                        <span class="text-sm font-bold text-emerald-400">Fresh (Under 30 min)</span>
+                    <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                    <span class="text-sm font-bold text-emerald-400">Fresh (Under 30 min)</span>
                     {% endif %}
                 </div>
             </div>
@@ -71,8 +104,9 @@
                     <span class="text-xs text-slate-400">/ 1,600 Limit</span>
                 </div>
                 <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden mt-1">
-                    <div class="bg-sky-500 h-full" style="width: {{ (api_usage / 1600) * 100 }}%"></div>
+                    <div class="bg-{% if api_usage >= 1440 %}rose-500{% elif api_usage >= 1120 %}amber-500{% else %}sky-500{% endif %} h-full" style="width: {{ (api_usage / 1600) * 100 }}%"></div>
                 </div>
+                <p class="text-[10px] text-{% if api_usage >= 1440 %}rose-400{% elif api_usage >= 1120 %}amber-400{% else %}sky-400{% endif %} font-semibold mt-1">Utilization: {{ (api_usage / 1600 * 100)|round(1) }}%</p>
             </div>
 
             <!-- Total Users -->
@@ -82,22 +116,57 @@
             </div>
         </div>
 
+        <!-- USER SUMMARY CARDS (Pro / Free / Exhausted) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-sm space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pro Users</p>
+                <p class="text-2xl font-extrabold text-emerald-400 mt-1">{{ (users|selectattr('is_pro')|list)|length }}</p>
+            </div>
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-sm space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Free / Trial Users</p>
+                <p class="text-2xl font-extrabold text-sky-400 mt-1">{{ (users|selectattr('is_pro')|reject|list)|length }}</p>
+            </div>
+            <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-sm space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Exhausted Credits</p>
+                <p class="text-2xl font-extrabold text-rose-400 mt-1">{{ (users|selectattr('telegram_credits', 'eq', 0)|list)|length }}</p>
+            </div>
+        </div>
+
         <!-- CRM & USER MANAGEMENT TABLE -->
         <section class="bg-slate-800/60 border border-slate-700 rounded-2xl p-6 shadow-sm space-y-4">
-            <h3 class="text-xs font-bold tracking-wider uppercase text-slate-400">User Management (CRM)</h3>
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-bold tracking-wider uppercase text-slate-400">User Management (CRM)</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">{{ users|length }} registered users</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <select id="crmFilter" class="bg-slate-900 border border-slate-700 text-xs text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <option value="all">All Users</option>
+                        <option value="pro">Sadece Pro</option>
+                        <option value="free">Sadece Free / Trial</option>
+                        <option value="no_telegram">Telegram Bağlı Olmayanlar</option>
+                        <option value="exhausted">Credits Tüketenler</option>
+                    </select>
+                    <button onclick="exportUsersCSV()" class="bg-slate-700 hover:bg-slate-600 text-xs text-white px-2.5 py-1.5 rounded-lg transition">
+                        CSV Export
+                    </button>
+                </div>
+            </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs border-collapse">
+                <table class="w-full text-left text-xs border-collapse" id="crmTable">
                     <thead>
-                        <tr class="border-b border-slate-700 text-slate-400 uppercase text-[10px]">
+                        <tr class="border-b border-slate-700 text-slate-400 uppercase text-[10px] sticky top-0 bg-slate-900">
                             <th class="py-3">Email</th>
                             <th class="py-3">Role / Status</th>
+                            <th class="py-3">Telegram</th>
+                            <th class="py-3">Credits</th>
                             <th class="py-3">Registered At</th>
-                            <th class="py-3">Telegram Chat ID</th>
+                            <th class="py-3 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-700/60">
+                    <tbody class="divide-y divide-slate-700/60 crm-row">
                         {% for u in users %}
-                        <tr>
+                        <tr data-pro="{{ '1' if u.is_pro else '0' }}" data-tg="{{ '1' if u.telegram_chat_id else '0' }}" data-credits="{{ u.telegram_credits or 0 }}">
                             <td class="py-3 font-semibold text-white">{{ u.email }}</td>
                             <td class="py-3">
                                 {% if u.is_admin %}
@@ -108,8 +177,17 @@
                                 <span class="px-2 py-0.5 rounded bg-slate-700 text-slate-300">Free / Trial</span>
                                 {% endif %}
                             </td>
-                            <td class="py-3 text-slate-400">{{ u.created_at }}</td>
                             <td class="py-3 font-mono text-slate-300">{{ u.telegram_chat_id or '-' }}</td>
+                            <td class="py-3 text-slate-300">{{ u.telegram_credits or 0 }}</td>
+                            <td class="py-3 text-slate-400">{{ u.created_at }}</td>
+                            <td class="py-3 text-right">
+                                {% if not u.is_admin %}
+                                <button onclick="suspendUser({{ u.id }})" class="text-amber-400 hover:text-amber-300 text-[10px] font-semibold underline">Suspend</button>
+                                <button onclick="deleteUser({{ u.id }})" class="ml-2 text-rose-400 hover:text-rose-300 text-[10px] font-semibold underline">Delete</button>
+                                {% else %}
+                                <span class="text-[10px] text-slate-500">Admin</span>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -197,7 +275,6 @@
                                 <td class="py-2 text-slate-200">{{ acc.admin_email }}</td>
                                 <td class="py-2 font-mono text-sky-400">{{ acc.ip_address }}</td>
                                 <td class="py-2 text-slate-500">{{ acc.accessed_at }}</td>
-                                
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -212,6 +289,43 @@
     <footer class="border-t border-slate-800 bg-slate-950 py-6 text-xs text-slate-500 text-center">
         &copy; Gulf Disruption Radar Admin Observability. Secure Enterprise Operations.
     </footer>
+
+    <!-- CRM FILTER SCRIPT -->
+    <script>
+    document.getElementById('crmFilter').addEventListener('change', function() {
+        const val = this.value;
+        const rows = document.querySelectorAll('#crmTable .crm-row');
+        rows.forEach(row => {
+            const isPro = row.dataset.pro === '1';
+            const hasTg = row.dataset.tg === '1';
+            const credits = parseInt(row.dataset.credits);
+            let show = true;
+            if (val === 'pro') show = isPro;
+            else if (val === 'free') show = !isPro;
+            else if (val === 'no_telegram') show = !hasTg;
+            else if (val === 'exhausted') show = credits <= 0;
+            row.style.display = show ? '' : 'none';
+        });
+    });
+
+    function suspendUser(userId) {
+        if (!confirm('Bu kullanıcıyı askıya almak istediğinizden emin misiniz?')) return;
+        fetch('/api/admin/suspend/' + userId, { method: 'POST' })
+            .then(r => r.json())
+            .then(d => { if (d.ok) location.reload(); });
+    }
+
+    function deleteUser(userId) {
+        if (!confirm('Bu kullanıcıyı KALICI Olarak silmek istediğinizden emin misiniz?')) return;
+        fetch('/api/admin/delete/' + userId, { method: 'POST' })
+            .then(r => r.json())
+            .then(d => { if (d.ok) location.reload(); });
+    }
+
+    function exportUsersCSV() {
+        window.location.href = '/api/admin/export-users';
+    }
+    </script>
 
 </body>
 </html>

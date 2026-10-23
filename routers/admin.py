@@ -1,69 +1,61 @@
-from fastapi import APIRouter, Request, HTTPException, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from datetime import datetime
+import csv
+import io
+import os
 
-from database import get_db, format_query, get_counter
-from services import check_telegram_bot_health, check_stale_data
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.templating import Jinja2Templates
+
+from database import (
+    cleanup_old_logs,
+    delete_user,
+    format_query,
+    get_counter,
+    get_current_user,
+    get_db,
+    get_user_stats,
+    log_admin_access,
+    suspend_user,
+    SYSTEM_METRICS,
+)
+from services import check_stale_data, check_telegram_bot_health, fetch_live_airport_data
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 templates = Jinja2Templates(directory="templates")
 
-# Yetkili admin e-posta kontrolü (Kendi e-postanızı buraya tanımlayabilirsiniz)
-ADMIN_EMAIL = "ayhan.hakyemez@gmail.com"
-
-def verify_admin(request: Request):
-    user_email = request.cookies.get("user_email")
-    if not user_email or user_email.strip().lower() != ADMIN_EMAIL.lower():
-        raise HTTPException(status_code=403, detail="Access denied. Administrator privileges required.")
-    return user_email
 
 @router.get("", response_class=HTMLResponse)
-async def admin_dashboard(request: Request):
-    try:
-        admin_email = verify_admin(request)
-    except HTTPException:
-        return RedirectResponse(url="/auth?mode=login", status_code=303)
+async def admin_panel(request: Request):
+    user = get_current_user(request)
+    if not user or not user.get("is_admin"):
+        raise HTTPException(status_code=404, detail="Not Found")
 
     # Admin erişim logunu kaydet (IP ve Zaman)
     client_ip = request.client.host if request.client else "Unknown"
-    try:
-        conn_ip = get_db()
-        cur_ip = conn_ip.cursor()
-        cur_ip.execute(format_query("""
-            INSERT INTO admin_access_logs (admin_email, ip_address) VALUES (?, ?)
-        """), (admin_email, client_ip))
-        conn_ip.commit()
-        conn_ip.close()
-    except Exception as e:
-        print(f"[Admin Access Log Error]: {e}")
+    log_admin_access(user["email"], client_ip)
 
     # Sistem ve Bot Sağlık Kontrolleri
     bot_healthy = check_telegram_bot_health()
     is_stale, stale_msg = check_stale_data()
     api_usage = get_counter("api_requests_this_month")
+    user_stats = get_user_stats()
 
-    # Veritabanından logları ve kullanıcıları çekme
     conn = get_db()
     cursor = conn.cursor()
 
-    # Kullanıcı Listesi (CRM)
     cursor.execute("SELECT * FROM users ORDER BY id DESC")
     users = cursor.fetchall()
 
-    # API Logları (Son 20 kayıt)
     cursor.execute("SELECT * FROM api_logs ORDER BY id DESC LIMIT 20")
     api_logs = cursor.fetchall()
 
-    # Bildirim Logları (Son 20 kayıt)
     cursor.execute("SELECT * FROM notification_logs ORDER BY id DESC LIMIT 20")
     notif_logs = cursor.fetchall()
 
-    # Hata Logları (Son 20 kayıt)
     cursor.execute("SELECT * FROM error_logs ORDER BY id DESC LIMIT 20")
     error_logs = cursor.fetchall()
 
-    # Admin Erişim Logları (Son 10 kayıt)
     cursor.execute("SELECT * FROM admin_access_logs ORDER BY id DESC LIMIT 10")
     access_logs = cursor.fetchall()
 
@@ -75,11 +67,89 @@ async def admin_dashboard(request: Request):
         "is_stale": is_stale,
         "stale_msg": stale_msg,
         "api_usage": api_usage,
+        "user_stats": user_stats,
         "users": users,
         "api_logs": api_logs,
         "notif_logs": notif_logs,
         "error_logs": error_logs,
-        "access_logs": access_logs
+        "access_logs": access_logs,
+        "bot_status": SYSTEM_METRICS.get("bot_status", "Unknown"),
+        "last_bot_run": SYSTEM_METRICS.get("last_bot_run"),
+        "last_payment_time": SYSTEM_METRICS.get("last_payment_time", "No payments received yet"),
+        "last_webhook_status": SYSTEM_METRICS.get("last_webhook_status", "Normal"),
     }
 
     return templates.TemplateResponse(request=request, name="admin_dashboard.html", context=context)
+
+
+# ---------------------------------------------------------
+# ADMIN SYNC NOW - Cache Bypass + Force Fresh FIDS Fetch
+# ---------------------------------------------------------
+@router.post("/sync-now")
+async def admin_sync_now(request: Request):
+    """Yetkili admin için 15 dakikalık önbelleği bypass ederek anlık canlı FIDS verisi çeker."""
+    user = get_current_user(request)
+    if not user or not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").strip().lower()]
+    if user["email"].lower() not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    try:
+        success, msg = fetch_live_airport_data("DXB", force_refresh=True)
+        SYSTEM_METRICS["last_bot_run"] = datetime.now()
+        SYSTEM_METRICS["bot_status"] = "Admin Sync Forced"
+        if success:
+            return {"ok": True, "message": msg}
+        return {"ok": False, "message": msg}
+    except Exception as e:
+        SYSTEM_METRICS["bot_status"] = f"Admin Sync Error: {str(e)}"
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------
+# ADMIN API: User Management (Suspend / Delete / Export)
+# ---------------------------------------------------------
+@router.post("/api/suspend/{user_id}")
+async def api_suspend_user(user_id: int, request: Request):
+    user = get_current_user(request)
+    if not user or not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    suspend_user(user_id)
+    return {"ok": True}
+
+
+@router.post("/api/delete/{user_id}")
+async def api_delete_user(user_id: int, request: Request):
+    user = get_current_user(request)
+    if not user or not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    delete_user(user_id)
+    return {"ok": True}
+
+
+@router.get("/api/export-users")
+async def api_export_users(request: Request):
+    user = get_current_user(request)
+    if not user or not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, email, is_pro, telegram_chat_id, telegram_credits, created_at FROM users ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "email", "is_pro", "telegram_chat_id", "telegram_credits", "created_at"])
+    for r in rows:
+        writer.writerow([r["id"], r["email"], r["is_pro"], r["telegram_chat_id"] or "", r["telegram_credits"] or 0, r["created_at"]])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=users_export.csv"},
+    )
