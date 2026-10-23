@@ -762,7 +762,7 @@ async def index(request: Request, q: Optional[str] = None):
     user = get_current_user(request)
     client_ip = request.client.host if request.client else "127.0.0.1"
     
-    # Doğru tanımlama:
+    # Tanımlama eksikliği burada giderildi:
     is_pro = bool(user and user.get("is_pro") == 1)
     real_pro = bool(user and user.get("is_pro") == 1 and not user.get("is_trial"))
     
@@ -781,7 +781,6 @@ async def index(request: Request, q: Optional[str] = None):
     watchlist = []
     tracked_flights = []
     watchlist_limit_reached = False
-    is_pro = bool(user and user.get("is_pro") == 1)
 
     if user:
         conn = get_db()
