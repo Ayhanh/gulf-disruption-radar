@@ -1,0 +1,60 @@
+{
+  "departures": [
+    {
+      "number": "FZ-821",
+      "airline": {"name": "flydubai Cargo"},
+      "status": "Canceled",
+      "arrival": {"airport": {"iata": "RUH", "name": "Riyadh King Khalid International", "countryCode": "SA"}},
+      "departure": {"scheduledTime": {"local": "2026-06-06T14:30:00+04:00"}, "terminal": "2", "gate": "14"}
+    },
+    {
+      "number": "EK-833",
+      "airline": {"name": "Emirates SkyCargo"},
+      "status": "Delayed",
+      "arrival": {"airport": {"iata": "DMM", "name": "Dammam King Fahd International", "countryCode": "SA"}},
+      "departure": {"scheduledTime": {"local": "2026-06-06T15:00:00+04:00"}, "terminal": "3", "gate": "B2"}
+    },
+    {
+      "number": "QR-101",
+      "airline": {"name": "Qatar Airways"},
+      "status": "Expected",
+      "arrival": {"airport": {"iata": "DOH", "name": "Doha Hamad International", "countryCode": "QA"}},
+      "departure": {"scheduledTime": {"local": "2026-06-06T16:15:00+04:00"}, "terminal": "1", "gate": "A1"}
+    },
+    {
+      "number": "GF-512",
+      "airline": {"name": "Gulf Air"},
+      "status": "Canceled",
+      "arrival": {"airport": {"iata": "BAH", "name": "Bahrain International", "countryCode": "BH"}},
+      "departure": {"scheduledTime": {"local": "2026-06-06T17:00:00+04:00"}, "terminal": "1", "gate": "C4"}
+    },
+    {
+      "number": "WY-603",
+      "airline": {"name": "Oman Air"},
+      "status": "Expected",
+      "arrival": {"airport": {"iata": "MCT", "name": "Muscat International", "countryCode": "OM"}},
+      "departure": {"scheduledTime": {"local": "2026-06-06T17:45:00+04:00"}, "terminal": "2", "gate": "9"}
+    },
+    {
+      "number": "SV-554",
+      "airline": {"name": "Saudia Cargo"},
+      "status": "Delayed",
+      "arrival": {"airport": {"iata": "JED", "name": "Jeddah King Abdulaziz", "countryCode": "SA"}},
+      "departure": {"scheduledTime": {"local": "2026-06-06T18:30:00+04:00"}, "terminal": "3", "gate": "B8"}
+    },
+    {
+      "number": "FZ-825",
+      "airline": {"name": "flydubai"},
+      "status": "Expected",
+      "arrival": {"airport": {"iata": "KWI", "name": "Kuwait International", "countryCode": "KW"}},
+      "departure": {"scheduledTime": {"local": "2026-06-06T19:00:00+04:00"}, "terminal": "2", "gate": "11"}
+    },
+    {
+      "number": "EK-841",
+      "airline": {"name": "Emirates"},
+      "status": "Expected",
+      "arrival": {"airport": {"iata": "RUH", "name": "Riyadh King Khalid International", "countryCode": "SA"}},
+      "departure": {"scheduledTime": {"local": "2026-06-06T20:15:00+04:00"}, "terminal": "3", "gate": "C12"}
+    }
+  ]
+}
