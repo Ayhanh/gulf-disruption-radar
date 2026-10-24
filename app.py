@@ -535,7 +535,7 @@ async def untrack_individual_flight(request: Request, flight_id: int = Form(...)
 async def security_page(request: Request):
     user = get_current_user(request)
     context = {"request": request, "user": user, "free_slots_left": max(0, 10 - get_free_user_count())}
-    return templates.TemplateResponse(request=request, name="security.html", context=context)
+    return templates.TemplateResponse("security.html", context)
 
 
 if __name__ == "__main__":
