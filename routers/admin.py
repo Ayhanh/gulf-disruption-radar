@@ -82,7 +82,7 @@ async def admin_panel(request: Request):
         "last_webhook_status": SYSTEM_METRICS.get("last_webhook_status", "Normal"),
     }
 
-    return templates.TemplateResponse(request=request, name="admin_dashboard.html", context=context)
+    return templates.TemplateResponse("admin_dashboard.html", {"request": request, **context})
 
 
 # ---------------------------------------------------------
