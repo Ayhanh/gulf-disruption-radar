@@ -113,8 +113,10 @@ async def admin_sync_now(request: Request):
 
 # ---------------------------------------------------------
 # ADMIN API: User Management (Suspend / Delete / Export)
+# Hem /admin/api/... hem de /api/admin/... isteklerini karşılayacak şekilde güncellendi
 # ---------------------------------------------------------
 @router.post("/api/suspend/{user_id}")
+@router.post("/api/admin/suspend/{user_id}")
 async def api_suspend_user(user_id: int, request: Request):
     user = get_current_user(request)
     if not user or not user.get("is_admin"):
@@ -124,6 +126,7 @@ async def api_suspend_user(user_id: int, request: Request):
 
 
 @router.post("/api/delete/{user_id}")
+@router.post("/api/admin/delete/{user_id}")
 async def api_delete_user(user_id: int, request: Request):
     user = get_current_user(request)
     if not user or not user.get("is_admin"):
@@ -133,6 +136,7 @@ async def api_delete_user(user_id: int, request: Request):
 
 
 @router.get("/api/export-users")
+@router.get("/api/admin/export-users")
 async def api_export_users(request: Request):
     user = get_current_user(request)
     if not user or not user.get("is_admin"):
