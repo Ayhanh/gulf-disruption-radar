@@ -47,17 +47,33 @@ async def admin_panel(request: Request):
     cursor.execute("SELECT * FROM users ORDER BY id DESC")
     users = cursor.fetchall()
 
-    cursor.execute("SELECT * FROM api_logs ORDER BY id DESC LIMIT 20")
-    api_logs = cursor.fetchall()
+    api_logs = []
+    try:
+        cursor.execute("SELECT * FROM api_logs ORDER BY id DESC LIMIT 20")
+        api_logs = cursor.fetchall()
+    except Exception:
+        api_logs = []
 
-    cursor.execute("SELECT * FROM notification_logs ORDER BY id DESC LIMIT 20")
-    notif_logs = cursor.fetchall()
+    notif_logs = []
+    try:
+        cursor.execute("SELECT * FROM notification_logs ORDER BY id DESC LIMIT 20")
+        notif_logs = cursor.fetchall()
+    except Exception:
+        notif_logs = []
 
-    cursor.execute("SELECT * FROM error_logs ORDER BY id DESC LIMIT 20")
-    error_logs = cursor.fetchall()
+    error_logs = []
+    try:
+        cursor.execute("SELECT * FROM error_logs ORDER BY id DESC LIMIT 20")
+        error_logs = cursor.fetchall()
+    except Exception:
+        error_logs = []
 
-    cursor.execute("SELECT * FROM admin_access_logs ORDER BY id DESC LIMIT 10")
-    access_logs = cursor.fetchall()
+    access_logs = []
+    try:
+        cursor.execute("SELECT * FROM admin_access_logs ORDER BY id DESC LIMIT 10")
+        access_logs = cursor.fetchall()
+    except Exception:
+        access_logs = []
 
     conn.close()
 
