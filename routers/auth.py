@@ -36,7 +36,7 @@ async def auth_page(request: Request, mode: Optional[str] = "register"):
         "initial_tab": "register" if mode == "register" else "login",
         "free_slots_left": max(0, 10 - get_free_user_count()),
     }
-    return templates.TemplateResponse(request=request, name="auth.html", context=context)
+    return templates.TemplateResponse(name="auth.html", context=context)
 
 
 @router.get("/auth/login")

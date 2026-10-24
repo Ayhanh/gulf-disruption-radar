@@ -3,20 +3,20 @@ import requests
 from dotenv import load_dotenv
 from pathlib import Path
 
-# .env dosyasını yükle
+# .env dosyasını yükle (isterseniz bu satırı tamamen kaldırabilirsiniz)
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "").strip()
+# API anahtarını buraya doğrudan tırnak içinde yazabilirsiniz:
+RAPIDAPI_KEY = "53a45c5132msh5feffd7b6b8efc6p1f26a3jsnb7988c969106".strip()
 
 def test_rapidapi_connection():
     print("=" * 60)
     print("🔍 DETAYLI RAPIDAPI (AERODATABOX) HATA TANI TESTİ")
     print("=" * 60)
 
-    if not RAPIDAPI_KEY:
-        print("❌ HATA: .env dosyasında 'RAPIDAPI_KEY' bulunamadı veya boş!")
-        print("💡 Çözüm: Proje dizinine .env dosyası oluşturup RAPIDAPI_KEY=... ekleyin.")
+    if not RAPIDAPI_KEY or RAPIDAPI_KEY == "BURAYA_KENDI_API_ANAHTARINIZI_YAZIN":
+        print("❌ HATA: Lütfen geçerli bir API anahtarı girin!")
         return
 
     print(f"🔑 Kullanılan API Key (Maskelenmiş): {RAPIDAPI_KEY[:6]}...{RAPIDAPI_KEY[-4:]}")
@@ -40,12 +40,6 @@ def test_rapidapi_connection():
         
         print(f"📡 HTTP Yanıt Kodu: {response.status_code} ({response.reason})")
         
-        # Rate limit ve kota başlıklarını kontrol et
-        print("\n📊 API Yanıt Başlıkları (Headers):")
-        for header_key in ["X-RateLimit-Requests-Limit", "X-RateLimit-Requests-Remaining", "X-RateLimit-Requests-Reset", "X-RapidAPI-Proxy-Response"]:
-            if header_key in response.headers:
-                print(f"   - {header_key}: {response.headers[header_key]}")
-
         if response.status_code == 200:
             data = response.json()
             departures = data.get("departures", [])
@@ -74,10 +68,10 @@ def test_rapidapi_connection():
 
     except requests.exceptions.Timeout:
         print("\n❌ ZAMAN AŞIMI HATASI (Timeout):")
-        print("   -> AeroDataBox sunucusuna 15 saniye içinde ulaşılamadı. İnternet bağlantınızı veya ağ/DNS ayarlarınızı kontrol edin.")
+        print("   -> AeroDataBox sunucusuna 15 saniye içinde ulaşılamadı.")
     except requests.exceptions.ConnectionError:
         print("\n❌ BAĞLANTI HATASI (Connection Error):")
-        print("   -> DNS çözümlenemedi veya sunucuya TCP bağlantısı kurulamadı. İnternetinizi kontrol edin.")
+        print("   -> İnternet bağlantınızı kontrol edin.")
     except Exception as e:
         print(f"\n❌ BEKLENMEYEN PYTHON İSTİSNASI: {type(e).__name__} -> {str(e)}")
 
