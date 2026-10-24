@@ -1,5 +1,6 @@
 import io
 import json
+import logging
 import os
 import smtplib
 import time
@@ -8,6 +9,12 @@ from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("gulf-radar")
 
 import requests
 
@@ -35,7 +42,7 @@ ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").strip().low
 # ---------------------------------------------------------
 def send_admin_email(subject: str, body: str):
     if not SMTP_PASSWORD:
-        print(f"[SMTP Warning] SMTP_PASSWORD not set, email skipped: {subject}")
+        logger.warning("SMTP_PASSWORD not set, email skipped: %s", subject)
         return
     try:
         msg = MIMEMultipart()
@@ -49,9 +56,9 @@ def send_admin_email(subject: str, body: str):
         server.login(SMTP_USER, SMTP_PASSWORD)
         server.sendmail(SMTP_FROM, ADMIN_EMAILS[0], msg.as_string())
         server.quit()
-        print(f"[SMTP Success] Email sent: {subject}")
+        logger.info("Email sent: %s", subject)
     except Exception as e:
-        print(f"[SMTP Error] Email sending failed: {e}")
+        logger.error("Email sending failed: %s", e)
 
 
 def send_reset_email(to_email: str, reset_url: str):
@@ -67,10 +74,7 @@ def send_reset_email(to_email: str, reset_url: str):
     """
 
     if not SMTP_PASSWORD:
-        print("\n" + "=" * 70)
-        print(f"[PASSWORD RESET LINK FOR {to_email}]:")
-        print(reset_url)
-        print("=" * 70 + "\n")
+        logger.warning("\n%s\n[PASSWORD RESET LINK FOR %s]:\n%s\n%s", "=" * 70, to_email, reset_url, "=" * 70)
         return
 
     try:
@@ -87,11 +91,8 @@ def send_reset_email(to_email: str, reset_url: str):
         server.quit()
         print(f"[SMTP Success] Password reset email sent to {to_email}")
     except Exception as e:
-        print(f"[SMTP Error] Failed to send password reset email: {e}")
-        print("\n" + "=" * 70)
-        print(f"[FALLBACK RESET LINK FOR {to_email}]:")
-        print(reset_url)
-        print("=" * 70 + "\n")
+        logger.error("Failed to send password reset email: %s", e)
+        logger.warning("\n%s\n[FALLBACK RESET LINK FOR %s]:\n%s\n%s", "=" * 70, to_email, reset_url, "=" * 70)
 
 
 # ---------------------------------------------------------
@@ -106,7 +107,7 @@ def _send_telegram_worker(chat_id: str, message: str):
         requests.post(url, json=payload, timeout=8)
         increment_counter("telegram_sent_today", 1)
     except Exception as e:
-        print(f"[Telegram Error]: {e}")
+        logger.error("Telegram Error: %s", e)
 
 
 async def send_telegram(chat_id: str, message: str):
@@ -185,33 +186,38 @@ def fetch_live_airport_data(iata_code="DXB", force_refresh=False):
                 data = json.loads(res_text)
                 departures = data.get("departures", [])
                 conn = get_db()
-                cursor = conn.cursor()
-                for dep in departures:
-                    fl_num = dep.get("number", "N/A")
-                    airline = dep.get("airline", {}).get("name", "Unknown Airline")
-                    arr_info = dep.get("arrival", {}).get("airport", {})
-                    dest_iata = arr_info.get("iata", "N/A")
-                    dest_name = arr_info.get("name", "Unknown")
-                    status = dep.get("status", "Expected")
-                    dep_info = dep.get("departure", {})
-                    sched_time = dep_info.get("scheduledTime", {}).get("local", "")
-                    terminal = dep_info.get("terminal", "-")
-                    gate = dep_info.get("gate", "-")
-                    ac_model = dep.get("aircraft", {}).get("model", "Commercial Jet")
+                try:
+                    cursor = conn.cursor()
+                    for dep in departures:
+                        fl_num = dep.get("number", "N/A")
+                        airline = dep.get("airline", {}).get("name", "Unknown Airline")
+                        arr_info = dep.get("arrival", {}).get("airport", {})
+                        dest_iata = arr_info.get("iata", "N/A")
+                        dest_name = arr_info.get("name", "Unknown")
+                        status = dep.get("status", "Expected")
+                        dep_info = dep.get("departure", {})
+                        sched_time = dep_info.get("scheduledTime", {}).get("local", "")
+                        terminal = dep_info.get("terminal", "-")
+                        gate = dep_info.get("gate", "-")
+                        ac_model = dep.get("aircraft", {}).get("model", "Commercial Jet")
 
-                    cursor.execute(format_query("""
-                        INSERT INTO flights_history (flight_num, airline, dest_iata, dest_name, status, scheduled_time, terminal, gate, aircraft_model, recorded_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                    """), (fl_num, airline, dest_iata, dest_name, status, sched_time, terminal, gate, ac_model))
+                        cursor.execute(format_query("""
+                            INSERT INTO flights_history (flight_num, airline, dest_iata, dest_name, status, scheduled_time, terminal, gate, aircraft_model, recorded_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                        """), (fl_num, airline, dest_iata, dest_name, status, sched_time, terminal, gate, ac_model))
 
-                # 24 saatten eski kayıtları temizleme mekanizması
-                cutoff_time = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
-                cursor.execute(format_query("DELETE FROM flights_history WHERE recorded_at < ?"), (cutoff_time,))
+                    # 24 saatten eski kayıtları temizleme mekanizması
+                    cutoff_time = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+                    cursor.execute(format_query("DELETE FROM flights_history WHERE recorded_at < ?"), (cutoff_time,))
 
-                conn.commit()
-                conn.close()
+                    conn.commit()
+                except Exception as db_err:
+                    logger.error("History Log Error: %s", db_err)
+                finally:
+                    conn.close()
+
             except Exception as db_err:
-                print(f"[History Log Error]: {db_err}")
+                logger.error("History Log Error: %s", db_err)
 
             return True, f"Live {iata_code} FIDS data synchronized."
         return False, f"API Error ({res.status_code})"
@@ -381,7 +387,7 @@ def parse_radar_data(search_query=""):
                         "is_cargo": False,
                     })
             except Exception as hist_err:
-                print(f"[History Query Error]: {hist_err}")
+                logger.error("History Query Error: %s", hist_err)
 
     all_flights = sorted(all_flights, key=lambda x: x.get("time", ""))
 

@@ -1,10 +1,17 @@
 import hashlib
+import logging
 import os
 import re
 import secrets
 import sqlite3
 from datetime import date, datetime, timedelta
 from pathlib import Path
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("gulf-radar")
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -136,6 +143,44 @@ def init_db():
                 recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS api_logs (
+                id SERIAL PRIMARY KEY,
+                endpoint TEXT NOT NULL,
+                status_code INTEGER NOT NULL,
+                response_time_ms INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS notification_logs (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                channel TEXT NOT NULL,
+                message TEXT,
+                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS error_logs (
+                id SERIAL PRIMARY KEY,
+                module TEXT NOT NULL,
+                error_message TEXT NOT NULL,
+                occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS admin_access_logs (
+                id SERIAL PRIMARY KEY,
+                admin_email TEXT NOT NULL,
+                ip_address TEXT NOT NULL,
+                accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0;")
+        except Exception:
+            pass
     else:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -222,9 +267,48 @@ def init_db():
                 recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
-
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS api_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                endpoint TEXT NOT NULL,
+                status_code INTEGER NOT NULL,
+                response_time_ms INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS notification_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                channel TEXT NOT NULL,
+                message TEXT,
+                sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS error_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                module TEXT NOT NULL,
+                error_message TEXT NOT NULL,
+                occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS admin_access_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                admin_email TEXT NOT NULL,
+                ip_address TEXT NOT NULL,
+                accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN telegram_credits INTEGER DEFAULT 10;")
+    except Exception:
+        pass
+
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0;")
     except Exception:
         pass
 
@@ -350,11 +434,13 @@ def verify_password(stored_hash: str, password: str) -> bool:
 # ---------------------------------------------------------
 def get_free_user_count() -> int:
     conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_pro = 0")
-    row = cursor.fetchone()
-    conn.close()
-    return row["cnt"] if row else 0
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_pro = 0")
+        row = cursor.fetchone()
+        return row["cnt"] if row else 0
+    finally:
+        conn.close()
 
 
 def is_valid_telegram_chat_id(chat_id: str) -> bool:
@@ -369,70 +455,76 @@ def get_current_user(request):
     if not session_id:
         return None
     conn = get_db()
-    cursor = conn.cursor()
-    query = format_query("""
-        SELECT u.id, u.email, u.telegram_chat_id, u.is_pro, u.telegram_credits, u.created_at
-        FROM users u
-        JOIN sessions s ON u.id = s.user_id
-        WHERE s.session_id = ?
-    """)
-    cursor.execute(query, (session_id,))
-    user = cursor.fetchone()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        query = format_query("""
+            SELECT u.id, u.email, u.telegram_chat_id, u.is_pro, u.telegram_credits, u.created_at
+            FROM users u
+            JOIN sessions s ON u.id = s.user_id
+            WHERE s.session_id = ?
+        """)
+        cursor.execute(query, (session_id,))
+        user = cursor.fetchone()
 
-    if not user:
-        return None
+        if not user:
+            return None
 
-    user_dict = dict(user)
-    created_at = user_dict.get("created_at")
+        user_dict = dict(user)
+        created_at = user_dict.get("created_at")
 
-    trial_active = False
-    if created_at:
-        try:
-            if isinstance(created_at, str):
-                reg_date = datetime.fromisoformat(created_at)
-            else:
-                reg_date = created_at
-            if datetime.now() - reg_date <= timedelta(days=7):
-                trial_active = True
-        except Exception:
-            pass
+        trial_active = False
+        if created_at:
+            try:
+                if isinstance(created_at, str):
+                    reg_date = datetime.fromisoformat(created_at)
+                else:
+                    reg_date = created_at
+                if datetime.now() - reg_date <= timedelta(days=7):
+                    trial_active = True
+            except Exception:
+                pass
 
-    ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").strip().lower()]
-    if user_dict["email"].lower() in ADMIN_EMAILS or user_dict.get("is_pro") == 1 or trial_active:
-        user_dict["is_pro"] = 1
-        user_dict["is_trial"] = trial_active
-    else:
-        user_dict["is_pro"] = 0
-        user_dict["is_trial"] = False
+        ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "").strip().lower()]
+        if user_dict["email"].lower() in ADMIN_EMAILS or user_dict.get("is_pro") == 1 or trial_active:
+            user_dict["is_pro"] = 1
+            user_dict["is_trial"] = trial_active
+        else:
+            user_dict["is_pro"] = 0
+            user_dict["is_trial"] = False
 
-    user_dict["is_admin"] = user_dict["email"].lower() in ADMIN_EMAILS
-    return user_dict
+        user_dict["is_admin"] = user_dict["email"].lower() in ADMIN_EMAILS
+        return user_dict
+    finally:
+        conn.close()
 
 
 def get_daily_search_count(identifier: str) -> int:
     today = date.today().isoformat()
     conn = get_db()
-    cursor = conn.cursor()
-    query = format_query("SELECT count FROM search_logs WHERE identifier = ? AND search_date = ?")
-    cursor.execute(query, (identifier, today))
-    row = cursor.fetchone()
-    conn.close()
-    return row["count"] if row else 0
+    try:
+        cursor = conn.cursor()
+        query = format_query("SELECT count FROM search_logs WHERE identifier = ? AND search_date = ?")
+        cursor.execute(query, (identifier, today))
+        row = cursor.fetchone()
+        return row["count"] if row else 0
+    finally:
+        conn.close()
 
 
 def increment_search_count(identifier: str):
     today = date.today().isoformat()
     conn = get_db()
-    cursor = conn.cursor()
-    query = format_query("""
-        INSERT INTO search_logs (identifier, search_date, count)
-        VALUES (?, ?, 1)
-        ON CONFLICT(identifier, search_date) DO UPDATE SET count = search_logs.count + 1
-    """)
-    cursor.execute(query, (identifier, today))
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        query = format_query("""
+            INSERT INTO search_logs (identifier, search_date, count)
+            VALUES (?, ?, 1)
+            ON CONFLICT(identifier, search_date) DO UPDATE SET count = search_logs.count + 1
+        """)
+        cursor.execute(query, (identifier, today))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------
@@ -440,8 +532,8 @@ def increment_search_count(identifier: str):
 # ---------------------------------------------------------
 def cleanup_old_logs():
     """Veritabanının şişmesini önlemek için 30 günden eski log kayıtlarını temizler."""
+    conn = get_db()
     try:
-        conn = get_db()
         cursor = conn.cursor()
         cutoff_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute(format_query("DELETE FROM api_logs WHERE created_at < ?"), (cutoff_date,))
@@ -449,23 +541,25 @@ def cleanup_old_logs():
         cursor.execute(format_query("DELETE FROM error_logs WHERE occurred_at < ?"), (cutoff_date,))
         cursor.execute(format_query("DELETE FROM admin_access_logs WHERE accessed_at < ?"), (cutoff_date,))
         conn.commit()
-        conn.close()
     except Exception as e:
-        print(f"[Log Cleanup Error]: {e}")
+        logger.error("Log cleanup error: %s", e)
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------
 # ADMIN ACCESS LOG HELPER
 # ---------------------------------------------------------
 def log_admin_access(admin_email: str, ip_address: str):
+    conn = get_db()
     try:
-        conn = get_db()
         cursor = conn.cursor()
         cursor.execute(format_query("INSERT INTO admin_access_logs (admin_email, ip_address) VALUES (?, ?)"), (admin_email, ip_address))
         conn.commit()
-        conn.close()
     except Exception as e:
-        print(f"[Admin Access Log Error]: {e}")
+        logger.error("Admin access log error: %s", e)
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------
@@ -473,42 +567,50 @@ def log_admin_access(admin_email: str, ip_address: str):
 # ---------------------------------------------------------
 def get_all_users():
     conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, email, is_pro, telegram_chat_id, telegram_credits, created_at FROM users ORDER BY id DESC")
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, email, is_pro, telegram_chat_id, telegram_credits, created_at FROM users ORDER BY id DESC")
+        rows = cursor.fetchall()
+        return rows
+    finally:
+        conn.close()
 
 
 def get_user_stats():
     conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) as cnt FROM users")
-    total = cursor.fetchone()["cnt"]
-    cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_pro = 1")
-    pro = cursor.fetchone()["cnt"]
-    cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_pro = 0 AND telegram_credits <= 0")
-    exhausted = cursor.fetchone()["cnt"]
-    conn.close()
-    return {"total": total, "pro": pro, "free": total - pro, "exhausted": exhausted}
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) as cnt FROM users")
+        total = cursor.fetchone()["cnt"]
+        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_pro = 1")
+        pro = cursor.fetchone()["cnt"]
+        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE is_pro = 0 AND telegram_credits <= 0")
+        exhausted = cursor.fetchone()["cnt"]
+        return {"total": total, "pro": pro, "free": total - pro, "exhausted": exhausted}
+    finally:
+        conn.close()
 
 
 def suspend_user(user_id: int):
     conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute(format_query("UPDATE users SET is_pro = 0 WHERE id = ?"), (user_id,))
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(format_query("UPDATE users SET is_pro = 0 WHERE id = ?"), (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def delete_user(user_id: int):
     conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute(format_query("DELETE FROM sessions WHERE user_id = ?"), (user_id,))
-    cursor.execute(format_query("DELETE FROM watchlist WHERE user_id = ?"), (user_id,))
-    cursor.execute(format_query("DELETE FROM tracked_flights WHERE user_id = ?"), (user_id,))
-    cursor.execute(format_query("DELETE FROM password_resets WHERE user_id = ?"), (user_id,))
-    cursor.execute(format_query("DELETE FROM users WHERE id = ?"), (user_id,))
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(format_query("DELETE FROM sessions WHERE user_id = ?"), (user_id,))
+        cursor.execute(format_query("DELETE FROM watchlist WHERE user_id = ?"), (user_id,))
+        cursor.execute(format_query("DELETE FROM tracked_flights WHERE user_id = ?"), (user_id,))
+        cursor.execute(format_query("DELETE FROM password_resets WHERE user_id = ?"), (user_id,))
+        cursor.execute(format_query("DELETE FROM users WHERE id = ?"), (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
 

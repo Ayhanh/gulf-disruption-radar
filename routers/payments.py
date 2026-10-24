@@ -1,15 +1,43 @@
 from fastapi import APIRouter, HTTPException, Request
 
+import hashlib
+import hmac
+import os
+from datetime import datetime
+
 from database import format_query, get_db, SYSTEM_METRICS
 from services import send_admin_email, send_telegram
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
 
+DODO_WEBHOOK_SECRET = os.getenv("DODO_WEBHOOK_SECRET", "").strip()
+
+
+def _verify_dodo_signature(payload: bytes, signature: str) -> bool:
+    if not DODO_WEBHOOK_SECRET:
+        return False
+    try:
+        expected = hmac.new(
+            DODO_WEBHOOK_SECRET.encode("utf-8"), payload, hashlib.sha256
+        ).hexdigest()
+        return hmac.compare_digest(expected, signature)
+    except Exception:
+        return False
+
 
 @router.post("/webhook")
 async def dodo_webhook(request: Request):
+    body = await request.body()
+    signature = request.headers.get("x-dodo-signature", "")
+
+    if DODO_WEBHOOK_SECRET and not _verify_dodo_signature(body, signature):
+        SYSTEM_METRICS["last_webhook_status"] = "Error: Invalid signature"
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
     try:
-        payload = await request.json()
+        import json
+
+        payload = json.loads(body)
         SYSTEM_METRICS["last_webhook_status"] = "Success (200 OK)"
     except Exception as e:
         SYSTEM_METRICS["last_webhook_status"] = f"Error: {str(e)}"
@@ -30,12 +58,12 @@ async def dodo_webhook(request: Request):
     if not customer_email:
         return {"status": "no_email_ignored"}
 
-    admin_chat = os_getenv("MY_TELEGRAM_ID", "").strip()
+    admin_chat = os.getenv("MY_TELEGRAM_ID", "").strip()
     conn = get_db()
     cursor = conn.cursor()
 
     if event_type in ["payment.succeeded", "subscription.active", "checkout.session.completed"]:
-        SYSTEM_METRICS["last_payment_time"] = datetime_now().strftime("%Y-%m-%d %H:%M:%S")
+        SYSTEM_METRICS["last_payment_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute(format_query("UPDATE users SET is_pro = 1 WHERE lower(email) = ?"), (customer_email,))
         conn.commit()
 
@@ -71,15 +99,3 @@ async def dodo_webhook(request: Request):
 
     conn.close()
     return {"status": "success"}
-
-
-def os_getenv(key, default=""):
-    import os
-
-    return os.getenv(key, default)
-
-
-def datetime_now():
-    from datetime import datetime
-
-    return datetime.now()

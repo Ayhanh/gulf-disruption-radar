@@ -325,7 +325,57 @@
     function exportUsersCSV() {
         window.location.href = '/api/admin/export-users';
     }
-    </script>
 
+    function getCsrfToken() {
+        var value = "; " + document.cookie;
+        var parts = value.split("; csrf_token=");
+        if (parts.length === 2) return parts.pop().split(";").shift();
+        return "";
+    }
+
+    function suspendUser(userId) {
+        if (!confirm('Bu kullanıcıyı askıya almak istediğinizden emin misiniz?')) return;
+        var token = getCsrfToken();
+        fetch('/api/admin/suspend/' + userId, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': token }
+        })
+            .then(r => r.json())
+            .then(d => { if (d.ok) location.reload(); });
+    }
+
+    function deleteUser(userId) {
+        if (!confirm('Bu kullanıcıyı KALICI Olarak silmek istediğinizden emin misiniz?')) return;
+        var token = getCsrfToken();
+        fetch('/api/admin/delete/' + userId, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': token }
+        })
+            .then(r => r.json())
+            .then(d => { if (d.ok) location.reload(); });
+    }
+</script>
+
+    <script>
+    (function() {
+        function getCookie(name) {
+            var value = "; " + document.cookie;
+            var parts = value.split("; " + name + "=");
+            if (parts.length === 2) return parts.pop().split(";").shift();
+        }
+        var token = getCookie("csrf_token");
+        if (token) {
+            document.querySelectorAll("form").forEach(function(form) {
+                if (!form.querySelector('input[name="csrf_token"]')) {
+                    var input = document.createElement("input");
+                    input.type = "hidden";
+                    input.name = "csrf_token";
+                    input.value = token;
+                    form.appendChild(input);
+                }
+            });
+        }
+    })();
+    </script>
 </body>
 </html>
