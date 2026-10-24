@@ -182,8 +182,8 @@
                             <td class="py-3 text-slate-400">{{ u.created_at }}</td>
                             <td class="py-3 text-right">
                                 {% if not u.is_admin %}
-                                <button onclick="suspendUser({{ u.id }})" class="text-amber-400 hover:text-amber-300 text-[10px] font-semibold underline">Suspend</button>
-                                <button onclick="deleteUser({{ u.id }})" class="ml-2 text-rose-400 hover:text-rose-300 text-[10px] font-semibold underline">Delete</button>
+                                <button onclick="suspendUser('{{ u.id }}')" class="text-amber-400 hover:text-amber-300 text-[10px] font-semibold underline">Suspend</button>
+                                <button onclick="deleteUser('{{ u.id }}')" class="ml-2 text-rose-400 hover:text-rose-300 text-[10px] font-semibold underline">Delete</button>
                                 {% else %}
                                 <span class="text-[10px] text-slate-500">Admin</span>
                                 {% endif %}
