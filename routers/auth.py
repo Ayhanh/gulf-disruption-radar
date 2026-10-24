@@ -246,7 +246,7 @@ async def reset_password_get(request: Request, token: str):
     if not record:
         return HTMLResponse("<h3>Invalid or expired password reset link.</h3><p><a href='/auth'>Return to Sign In</a></p>", status_code=400)
 
-    return templates.TemplateResponse(request, "reset_password.html", {"request": request, "token": token, "error": None})
+    return templates.TemplateResponse(request=request, name="reset_password.html", context={"token": token, "error": None})
 
 
 @router.post("/auth/reset-password")
@@ -257,10 +257,10 @@ async def reset_password_post(
     confirm_password: str = Form(...),
 ):
     if password != confirm_password:
-        return templates.TemplateResponse(request, "reset_password.html", {"request": request, "token": token, "error": "Passwords do not match."})
+        return templates.TemplateResponse(request=request, name="reset_password.html", context={"token": token, "error": "Passwords do not match."})
 
     if len(password) < 6:
-        return templates.TemplateResponse(request, "reset_password.html", {"request": request, "token": token, "error": "Password must be at least 6 characters long."})
+        return templates.TemplateResponse(request=request, name="reset_password.html", context={"token": token, "error": "Password must be at least 6 characters long."})
 
     conn = get_db()
     cursor = conn.cursor()

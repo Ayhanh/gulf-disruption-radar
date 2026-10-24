@@ -431,7 +431,7 @@ async def index(request: Request, q: Optional[str] = None):
         "is_pro": is_pro,
         "free_slots_left": free_slots_left,
     }
-    return templates.TemplateResponse("index.html", {"request": request, **context})
+    return templates.TemplateResponse(request=request, name="index.html", context=context)
 
 
 @app.post("/track")
@@ -535,7 +535,7 @@ async def untrack_individual_flight(request: Request, flight_id: int = Form(...)
 async def security_page(request: Request):
     user = get_current_user(request)
     context = {"request": request, "user": user, "free_slots_left": max(0, 10 - get_free_user_count())}
-    return templates.TemplateResponse("security.html", context)
+    return templates.TemplateResponse(request=request, name="security.html", context=context)
 
 
 if __name__ == "__main__":

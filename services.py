@@ -133,16 +133,39 @@ def check_telegram_bot_health() -> bool:
 
 
 def check_stale_data() -> tuple[bool, str]:
-    """Önbellek verisinin 30 dakikadan eski olup olmadığını kontrol eder."""
-    if not DATA_CACHE_FILE.exists():
-        return True, "No cache file found. Data is missing."
+    """Önbellek verisinin veya veritabanı kayıtlarının 30 dakikadan eski olup olmadığını kontrol eder."""
+    if DATA_CACHE_FILE.exists():
+        file_age_seconds = time.time() - DATA_CACHE_FILE.stat().st_mtime
+        if file_age_seconds <= 1800:
+            return False, "Data is fresh."
 
-    file_age_seconds = time.time() - DATA_CACHE_FILE.stat().st_mtime
-    if file_age_seconds > 1800:
-        minutes_old = int(file_age_seconds / 60)
-        return True, f"Warning: Data is stale ({minutes_old} minutes old)."
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT MAX(recorded_at) as max_time FROM flights_history")
+        row = cursor.fetchone()
+        conn.close()
 
-    return False, "Data is fresh."
+        if row and row["max_time"]:
+            max_time = row["max_time"]
+            if isinstance(max_time, str):
+                try:
+                    last_dt = datetime.fromisoformat(max_time.replace("Z", "+00:00"))
+                except Exception:
+                    last_dt = datetime.strptime(max_time[:19], "%Y-%m-%d %H:%M:%S")
+            else:
+                last_dt = max_time
+
+            age_seconds = (datetime.now() - last_dt.replace(tzinfo=None)).total_seconds()
+            if age_seconds <= 1800:
+                return False, f"Data is fresh (DB synced {int(age_seconds / 60)}m ago)."
+            else:
+                minutes_old = int(age_seconds / 60)
+                return True, f"Warning: Data is stale ({minutes_old} minutes old)."
+    except Exception as e:
+        logger.error("Check stale data DB query error: %s", e)
+
+    return True, "No recent flight telemetry found."
 
 
 # ---------------------------------------------------------
@@ -239,45 +262,62 @@ def fetch_live_airport_data(iata_code="DXB", force_refresh=False):
 
 
 def parse_radar_data(search_query=""):
-    try:
-        with open(DATA_CACHE_FILE, "r", encoding="utf-8") as f:
-            text = f.read()
+    data = None
+    if DATA_CACHE_FILE.exists():
         try:
-            data = json.loads(text)
-        except Exception:
-            last_bracket = text.rstrip().rstrip(",").rfind("}")
-            data = json.loads(text[: last_bracket + 1] + "]}")
-    except Exception:
-        data = {
-            "departures": [
-                {"number": "FZ-821", "airline": {"name": "flydubai Cargo"}, "status": "Canceled",
-                 "arrival": {"airport": {"iata": "RUH", "name": "Riyadh King Khalid International", "countryCode": "SA"}},
-                 "departure": {"scheduledTime": {"local": "2026-06-06T14:30:00+04:00"}, "terminal": "2", "gate": "14"}},
-                {"number": "EK-833", "airline": {"name": "Emirates SkyCargo"}, "status": "Delayed",
-                 "arrival": {"airport": {"iata": "DMM", "name": "Dammam King Fahd International", "countryCode": "SA"}},
-                 "departure": {"scheduledTime": {"local": "2026-06-06T15:00:00+04:00"}, "terminal": "3", "gate": "B2"}},
-                {"number": "QR-101", "airline": {"name": "Qatar Airways"}, "status": "Expected",
-                 "arrival": {"airport": {"iata": "DOH", "name": "Doha Hamad International", "countryCode": "QA"}},
-                 "departure": {"scheduledTime": {"local": "2026-06-06T16:15:00+04:00"}, "terminal": "1", "gate": "A1"}},
-                {"number": "GF-512", "airline": {"name": "Gulf Air"}, "status": "Canceled",
-                 "arrival": {"airport": {"iata": "BAH", "name": "Bahrain International", "countryCode": "BH"}},
-                 "departure": {"scheduledTime": {"local": "2026-06-06T17:00:00+04:00"}, "terminal": "1", "gate": "C4"}},
-                {"number": "WY-603", "airline": {"name": "Oman Air"}, "status": "Expected",
-                 "arrival": {"airport": {"iata": "MCT", "name": "Muscat International", "countryCode": "OM"}},
-                 "departure": {"scheduledTime": {"local": "2026-06-06T17:45:00+04:00"}, "terminal": "2", "gate": "9"}},
-                {"number": "SV-554", "airline": {"name": "Saudia Cargo"}, "status": "Delayed",
-                 "arrival": {"airport": {"iata": "JED", "name": "Jeddah King Abdulaziz", "countryCode": "SA"}},
-                 "departure": {"scheduledTime": {"local": "2026-06-06T18:30:00+04:00"}, "terminal": "3", "gate": "B8"}},
-                {"number": "FZ-825", "airline": {"name": "flydubai"}, "status": "Expected",
-                 "arrival": {"airport": {"iata": "KWI", "name": "Kuwait International", "countryCode": "KW"}},
-                 "departure": {"scheduledTime": {"local": "2026-06-06T19:00:00+04:00"}, "terminal": "2", "gate": "11"}},
-                {"number": "EK-841", "airline": {"name": "Emirates"}, "status": "Expected",
-                 "arrival": {"airport": {"iata": "RUH", "name": "Riyadh King Khalid International", "countryCode": "SA"}},
-                 "departure": {"scheduledTime": {"local": "2026-06-06T20:15:00+04:00"}, "terminal": "3", "gate": "C12"}}
-            ]
-        }
+            with open(DATA_CACHE_FILE, "r", encoding="utf-8") as f:
+                text = f.read()
+            try:
+                data = json.loads(text)
+            except Exception:
+                last_bracket = text.rstrip().rstrip(",").rfind("}")
+                data = json.loads(text[: last_bracket + 1] + "]}")
+        except Exception as file_err:
+            logger.error("Failed to read DATA_CACHE_FILE: %s", file_err)
 
-    departures = data.get("departures", [])
+    departures = []
+    if data and isinstance(data, dict) and data.get("departures"):
+        departures = data.get("departures", [])
+
+    # Önbellek dosyası yoksa veya boşsa, veritabanındaki flights_history tablosundan son 24 saatlik verileri çek
+    if not departures:
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
+            cutoff = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+            query_str = format_query("""
+                SELECT flight_num, airline, dest_iata, dest_name, status, scheduled_time, terminal, gate, aircraft_model, recorded_at
+                FROM flights_history
+                WHERE recorded_at >= ?
+                ORDER BY recorded_at DESC
+            """)
+            cursor.execute(query_str, (cutoff,))
+            db_rows = cursor.fetchall()
+            conn.close()
+
+            if db_rows:
+                seen_flights = set()
+                db_departures = []
+                for row in db_rows:
+                    fn = row["flight_num"]
+                    if fn and fn not in seen_flights:
+                        seen_flights.add(fn)
+                        db_departures.append({
+                            "number": row["flight_num"],
+                            "airline": {"name": row["airline"]},
+                            "status": row["status"],
+                            "arrival": {"airport": {"iata": row["dest_iata"], "name": row["dest_name"]}},
+                            "departure": {
+                                "scheduledTime": {"local": row["scheduled_time"]},
+                                "terminal": row["terminal"],
+                                "gate": row["gate"],
+                            },
+                            "aircraft": {"model": row["aircraft_model"]}
+                        })
+                departures = db_departures
+        except Exception as db_err:
+            logger.error("DB fallback in parse_radar_data failed: %s", db_err)
+
     total_count = len(departures)
     canceled_count = 0
     delayed_count = 0
@@ -317,7 +357,7 @@ def parse_radar_data(search_query=""):
         sched_display = (
             sched_time_raw.split("T")[-1][:5]
             if "T" in sched_time_raw
-            else (sched_time_raw[-11:-6] if len(sched_time_raw) >= 11 else sched_time_raw)
+            else (sched_time_raw[11:16] if len(sched_time_raw) >= 16 else sched_time_raw)
         )
 
         if status == "Canceled":
@@ -359,7 +399,7 @@ def parse_radar_data(search_query=""):
         q = search_query.lower()
         all_flights = [fl for fl in all_flights if q in fl["dest_name"].lower() or q in fl["dest_iata"].lower() or q in fl["airline"].lower() or q in fl["flight_num"].lower()]
 
-        # Eğer canlı cache'de bulunamadıysa flights_history tablosundan geçmiş kayıtları sorgulayalım
+        # Eğer canlı veride bulunamadıysa flights_history tablosundan geçmiş kayıtları sorgulayalım
         if not all_flights:
             try:
                 conn = get_db()
@@ -375,6 +415,8 @@ def parse_radar_data(search_query=""):
                 conn.close()
 
                 for hr in history_rows:
+                    st_raw = hr["scheduled_time"] or "-"
+                    st_disp = st_raw.split("T")[-1][:5] if "T" in st_raw else (st_raw[11:16] if len(st_raw) >= 16 else st_raw)
                     all_flights.append({
                         "flight_num": hr["flight_num"],
                         "call_sign": "-",
@@ -385,8 +427,8 @@ def parse_radar_data(search_query=""):
                         "dest_country": "-",
                         "dest_tz": "-",
                         "coords": "-",
-                        "time": hr["scheduled_time"][-5:] if hr["scheduled_time"] else "-",
-                        "sched_local": hr["scheduled_time"],
+                        "time": st_disp,
+                        "sched_local": st_raw,
                         "sched_utc": "-",
                         "revised_time": "-",
                         "runway_time": "-",
