@@ -15,7 +15,6 @@ from database import (
     get_current_user,
     get_db,
     get_user_stats,
-    log_admin_access,
     suspend_user,
     SYSTEM_METRICS,
 )
@@ -30,10 +29,6 @@ async def admin_panel(request: Request):
     user = get_current_user(request)
     if not user or not user.get("is_admin"):
         raise HTTPException(status_code=404, detail="Not Found")
-
-    # Admin erişim logunu kaydet (IP ve Zaman)
-    client_ip = request.client.host if request.client else "Unknown"
-    log_admin_access(user["email"], client_ip)
 
     # Sistem ve Bot Sağlık Kontrolleri
     bot_healthy = check_telegram_bot_health()
@@ -68,13 +63,6 @@ async def admin_panel(request: Request):
     except Exception:
         error_logs = []
 
-    access_logs = []
-    try:
-        cursor.execute("SELECT * FROM admin_access_logs ORDER BY id DESC LIMIT 10")
-        access_logs = cursor.fetchall()
-    except Exception:
-        access_logs = []
-
     conn.close()
 
     context = {
@@ -88,7 +76,6 @@ async def admin_panel(request: Request):
         "api_logs": api_logs,
         "notif_logs": notif_logs,
         "error_logs": error_logs,
-        "access_logs": access_logs,
         "bot_status": SYSTEM_METRICS.get("bot_status", "Unknown"),
         "last_bot_run": SYSTEM_METRICS.get("last_bot_run"),
         "last_payment_time": SYSTEM_METRICS.get("last_payment_time", "No payments received yet"),
