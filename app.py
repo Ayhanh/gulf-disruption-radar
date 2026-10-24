@@ -1,6 +1,8 @@
 import asyncio
 import io
+import logging
 import os
+import secrets
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -45,17 +47,70 @@ from routers.payments import router as payments_router
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger("gulf-radar")
+
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "").strip()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 APP_BASE_URL = os.getenv("APP_BASE_URL", "https://gulfdisruptionradar.co.uk").rstrip("/")
 DEBUG_MODE = os.getenv("DEBUG", "false").strip().lower() in {"1", "true", "yes", "on"}
-ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").strip().lower()]
+ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "").strip().lower()]
 
 RADAR_PRO_MONTHLY = os.getenv("Radar_Pro_Monthly", "").strip()
 RADAR_PRO_ANNUAL = os.getenv("Radar_Pro_Annual", "").strip()
 
 app = FastAPI(title="Gulf Disruption Radar")
+
+# ---------------------------------------------------------
+# CSRF PROTECTION (Double-Submit Cookie Pattern)
+# ---------------------------------------------------------
+CSRF_EXEMPT_PATHS = {"/api/payments/webhook"}
+
+
+@app.middleware("http")
+async def csrf_middleware(request: Request, call_next):
+    if request.method in {"GET", "HEAD", "OPTIONS"}:
+        response = await call_next(request)
+        csrf_token = request.cookies.get("csrf_token")
+        if not csrf_token:
+            csrf_token = secrets.token_urlsafe(32)
+            response.set_cookie(
+                "csrf_token",
+                csrf_token,
+                httponly=True,
+                samesite="lax",
+                secure=False,
+                path="/",
+            )
+        return response
+
+    if request.url.path in CSRF_EXEMPT_PATHS:
+        return await call_next(request)
+
+    cookie_token = request.cookies.get("csrf_token")
+
+    header_token = request.headers.get("x-csrf-token", "")
+    form_token = None
+
+    content_type = request.headers.get("content-type", "")
+    if content_type.startswith("application/x-www-form-urlencoded"):
+        try:
+            form_data = await request.form()
+            form_token = form_data.get("csrf_token")
+        except Exception:
+            pass
+
+    token = header_token or form_token
+
+    if not cookie_token or not token or not secrets.compare_digest(cookie_token, token):
+        raise HTTPException(status_code=403, detail="CSRF token missing or invalid")
+
+    response = await call_next(request)
+    return response
 
 static_dir = BASE_DIR / "static"
 static_dir.mkdir(exist_ok=True)
@@ -177,7 +232,7 @@ async def automated_radar_monitor():
         except Exception as e:
             _API_ERROR_COUNT += 1
             SYSTEM_METRICS["bot_status"] = f"Error: {str(e)}"
-            print(f"[Monitor Exception]: {e}")
+            logger.exception("Monitor exception: %s", e)
         await asyncio.sleep(7200)  # 2 saatlik periyot
 
 
