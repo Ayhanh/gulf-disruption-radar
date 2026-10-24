@@ -431,7 +431,7 @@ async def index(request: Request, q: Optional[str] = None):
         "is_pro": is_pro,
         "free_slots_left": free_slots_left,
     }
-    return templates.TemplateResponse(request=request, name="index.html", context=context)
+    return templates.TemplateResponse("index.html", {"request": request, **context})
 
 
 @app.post("/track")
