@@ -431,6 +431,7 @@ async def index(request: Request, q: Optional[str] = None):
         "is_pro": is_pro,
         "free_slots_left": free_slots_left,
     }
+    context["request"] = request
     return templates.TemplateResponse(request, "index.html", context)
 
 
