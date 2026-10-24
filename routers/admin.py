@@ -25,7 +25,7 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 templates = Jinja2Templates(directory="templates")
 
 
-@router.get("", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse)
 async def admin_panel(request: Request):
     user = get_current_user(request)
     if not user or not user.get("is_admin"):
