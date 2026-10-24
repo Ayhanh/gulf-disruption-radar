@@ -36,7 +36,7 @@ async def auth_page(request: Request, mode: Optional[str] = "register"):
         "initial_tab": "register" if mode == "register" else "login",
         "free_slots_left": max(0, 10 - get_free_user_count()),
     }
-    return templates.TemplateResponse(request, "auth.html", context)
+    return templates.TemplateResponse(request=request, name="auth.html", context=context)
 
 
 @router.get("/auth/login")
@@ -69,7 +69,7 @@ async def register(
             "initial_tab": "register",
             "free_slots_left": max(0, 10 - get_free_user_count()),
         }
-        return templates.TemplateResponse(request, "auth.html", context)
+        return templates.TemplateResponse(request=request, name="auth.html", context=context)
 
     conn = get_db()
     cursor = conn.cursor()
@@ -83,7 +83,7 @@ async def register(
             "initial_tab": "register",
             "free_slots_left": max(0, 10 - get_free_user_count()),
         }
-        return templates.TemplateResponse(request, "auth.html", context)
+        return templates.TemplateResponse(request=request, name="auth.html", context=context)
 
     free_count = get_free_user_count()
     ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").strip().lower()]
@@ -98,7 +98,7 @@ async def register(
             "initial_tab": "register",
             "free_slots_left": 0,
         }
-        return templates.TemplateResponse(request, "auth.html", context)
+        return templates.TemplateResponse(request=request, name="auth.html", context=context)
 
     pwd_hash = hash_password(password)
 
@@ -167,7 +167,7 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
             "initial_tab": "login",
             "free_slots_left": max(0, 10 - get_free_user_count()),
         }
-        return templates.TemplateResponse(request, "auth.html", context)
+        return templates.TemplateResponse(request=request, name="auth.html", context=context)
 
     target_user_id = user["id"]
     session_id = secrets.token_hex(24)
@@ -229,7 +229,7 @@ async def forgot_password(request: Request, email: str = Form(...)):
         "initial_tab": "login",
         "free_slots_left": max(0, 10 - get_free_user_count()),
     }
-    return templates.TemplateResponse(request, "auth.html", context)
+    return templates.TemplateResponse(request=request, name="auth.html", context=context)
 
 
 @router.get("/auth/reset-password", response_class=HTMLResponse)
