@@ -68,7 +68,7 @@ app = FastAPI(title="Gulf Disruption Radar")
 # ---------------------------------------------------------
 # CSRF PROTECTION (Double-Submit Cookie Pattern)
 # ---------------------------------------------------------
-CSRF_EXEMPT_PATHS = {"/api/payments/webhook"}
+CSRF_EXEMPT_PATHS = {"/api/payments/webhook", "/admin/sync-now"}
 
 
 @app.middleware("http")
