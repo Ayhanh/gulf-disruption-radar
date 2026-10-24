@@ -36,6 +36,9 @@ SMTP_FROM = os.getenv("SMTP_FROM", "ayhan.hakyemez@gmail.com")
 
 ADMIN_EMAILS = [os.getenv("ADMIN_EMAIL", "ayhan.hakyemez@gmail.com").strip().lower()]
 
+# Admin Sync Now için rate limit koruma değişkeni (1 dakika cooldown)
+_LAST_SYNC_TIME = 0
+
 
 # ---------------------------------------------------------
 # EMAIL NOTIFICATION & PASSWORD RESET ENGINE (SMTP)
@@ -146,9 +149,19 @@ def check_stale_data() -> tuple[bool, str]:
 # LIVE AIRPORT & FIDS ENGINE (WITH 15-MIN CACHE & HISTORY LOGGING)
 # ---------------------------------------------------------
 def fetch_live_airport_data(iata_code="DXB", force_refresh=False):
+    global _LAST_SYNC_TIME
     """Fetches live data from AeroDataBox only if the last fetch was more than 15 minutes ago, and logs snapshots into flights_history."""
     if not RAPIDAPI_KEY:
         return False, "RapidAPI Key is not defined."
+
+    # Eğer force_refresh (Admin Sync Now) çağrıldıysa, 1 dakika (60 saniye) gecikme kuralı uygulayalım
+    if force_refresh:
+        current_time = time.time()
+        elapsed = current_time - _LAST_SYNC_TIME
+        if elapsed < 60:
+            remaining = int(60 - elapsed)
+            return False, f"Rate limit protection: Please wait {remaining} seconds before syncing again."
+        _LAST_SYNC_TIME = current_time
 
     # 15 Dakika Cache Kontrolü (force_refresh=False ise atla)
     if not force_refresh and DATA_CACHE_FILE.exists():

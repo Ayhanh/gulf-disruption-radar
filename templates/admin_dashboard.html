@@ -37,13 +37,13 @@
             <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin Force Sync</p>
             <p class="text-sm text-slate-200">15 dakikalık önbelleği bypass ederek anlık canlı AeroDataBox FIDS verisi çeker.</p>
         </div>
-        <form action="/admin/sync-now" method="POST" class="flex items-center gap-2">
-            <button type="submit"
+        <div class="flex items-center gap-3">
+            <span id="sync-result" class="text-xs text-slate-400"></span>
+            <button type="button" onclick="triggerSync()"
                     class="bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow-md shadow-sky-500/20 flex items-center gap-1.5">
                 <span>🔄</span> <span>Sync Now</span>
             </button>
-            <span id="sync-result" class="text-xs text-slate-400"></span>
-        </form>
+        </div>
     </div>
 
     <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
@@ -290,7 +290,7 @@
         &copy; Gulf Disruption Radar Admin Observability. Secure Enterprise Operations.
     </footer>
 
-    <!-- CRM FILTER SCRIPT -->
+    <!-- CRM FILTER SCRIPT & SYNC NOW AJAX -->
     <script>
     document.getElementById('crmFilter').addEventListener('change', function() {
         const val = this.value;
@@ -308,29 +308,42 @@
         });
     });
 
-    function suspendUser(userId) {
-        if (!confirm('Bu kullanıcıyı askıya almak istediğinizden emin misiniz?')) return;
-        fetch('/api/admin/suspend/' + userId, { method: 'POST' })
-            .then(r => r.json())
-            .then(d => { if (d.ok) location.reload(); });
-    }
-
-    function deleteUser(userId) {
-        if (!confirm('Bu kullanıcıyı KALICI Olarak silmek istediğinizden emin misiniz?')) return;
-        fetch('/api/admin/delete/' + userId, { method: 'POST' })
-            .then(r => r.json())
-            .then(d => { if (d.ok) location.reload(); });
-    }
-
-    function exportUsersCSV() {
-        window.location.href = '/api/admin/export-users';
-    }
-
     function getCsrfToken() {
         var value = "; " + document.cookie;
         var parts = value.split("; csrf_token=");
         if (parts.length === 2) return parts.pop().split(";").shift();
         return "";
+    }
+
+    async function triggerSync() {
+        const resultSpan = document.getElementById('sync-result');
+        resultSpan.innerText = "Senkronize ediliyor...";
+        resultSpan.className = "text-xs text-slate-400";
+        
+        var token = getCsrfToken();
+        try {
+            const response = await fetch('/admin/sync-now', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': token }
+            });
+            const data = await response.json();
+            
+            if (data.ok) {
+                resultSpan.innerText = "✅ Veriler başarıyla güncellendi!";
+                resultSpan.className = "text-xs text-emerald-400 font-semibold";
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                if (data.message && data.message.includes("Rate limit protection")) {
+                    resultSpan.innerText = "⏳ Çok sık istek attınız. Lütfen bir dakika sonra deneyebilirsiniz.";
+                } else {
+                    resultSpan.innerText = "⚠️ " + (data.message || "Güncelleme başarısız oldu.");
+                }
+                resultSpan.className = "text-xs text-amber-400 font-semibold";
+            }
+        } catch (err) {
+            resultSpan.innerText = "❌ Bağlantı hatası oluştu.";
+            resultSpan.className = "text-xs text-rose-400 font-semibold";
+        }
     }
 
     function suspendUser(userId) {
@@ -353,6 +366,10 @@
         })
             .then(r => r.json())
             .then(d => { if (d.ok) location.reload(); });
+    }
+
+    function exportUsersCSV() {
+        window.location.href = '/api/admin/export-users';
     }
 </script>
 
