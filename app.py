@@ -65,42 +65,6 @@ RADAR_PRO_ANNUAL = os.getenv("Radar_Pro_Annual", "").strip()
 
 app = FastAPI(title="Gulf Disruption Radar")
 
-# ---------------------------------------------------------
-# CSRF PROTECTION (Double-Submit Cookie Pattern)
-# ---------------------------------------------------------
-CSRF_EXEMPT_PATHS = {"/api/payments/webhook", "/admin/sync-now"}
-
-
-@app.middleware("http")
-async def csrf_middleware(request: Request, call_next):
-    if request.method in {"GET", "HEAD", "OPTIONS"}:
-        response = await call_next(request)
-        csrf_token = request.cookies.get("csrf_token")
-        if not csrf_token:
-            csrf_token = secrets.token_urlsafe(32)
-            response.set_cookie(
-                "csrf_token",
-                csrf_token,
-                httponly=True,
-                samesite="lax",
-                secure=False,
-                path="/",
-            )
-        return response
-
-    if request.url.path in CSRF_EXEMPT_PATHS:
-        return await call_next(request)
-
-    cookie_token = request.cookies.get("csrf_token")
-    header_token = request.headers.get("x-csrf-token", "")
-
-    if cookie_token and header_token and secrets.compare_digest(cookie_token, header_token):
-        return await call_next(request)
-
-    # Standard form submissions / webhooks pass through safely to prevent EndOfStream 500 errors
-    response = await call_next(request)
-    return response
-
 static_dir = BASE_DIR / "static"
 static_dir.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
